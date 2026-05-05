@@ -1,9 +1,16 @@
 {
   "tests": [
     {
-      "name": "Get messages without token",
+      "name": "GET messages — no token → 401",
       "method": "GET",
       "path": "/",
+      "expectedStatus": 401
+    },
+    {
+      "name": "POST upload — no token → 401",
+      "method": "POST",
+      "path": "/?action=upload",
+      "body": {"data": "abc", "mime": "image/jpeg", "folder": "images"},
       "expectedStatus": 401
     }
   ]

@@ -1,0 +1,9 @@
+ALTER TABLE t_p65061780_ash_clan_manager.messages
+  ADD COLUMN IF NOT EXISTS msg_type  VARCHAR(10)  NOT NULL DEFAULT 'text',
+  ADD COLUMN IF NOT EXISTS image_url TEXT,
+  ADD COLUMN IF NOT EXISTS voice_url TEXT,
+  ADD COLUMN IF NOT EXISTS gif_url   TEXT,
+  ADD COLUMN IF NOT EXISTS duration  INTEGER;
+
+ALTER TABLE t_p65061780_ash_clan_manager.messages
+  ALTER COLUMN text SET DEFAULT '';

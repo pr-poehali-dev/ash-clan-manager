@@ -1,0 +1,41 @@
+{
+  "name": "ASH — Clan Hub",
+  "short_name": "ASH",
+  "description": "Платформа управления игровым кланом — чат, статистика, события",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0F0E0D",
+  "theme_color": "#FF5500",
+  "lang": "ru",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "https://cdn.poehali.dev/projects/d47e8694-e73a-4dce-8413-946f7c3e8bbb/files/acbc659f-1a1c-4976-a3ca-73975d1e2c76.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.poehali.dev/projects/d47e8694-e73a-4dce-8413-946f7c3e8bbb/files/acbc659f-1a1c-4976-a3ca-73975d1e2c76.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["games", "social"],
+  "shortcuts": [
+    {
+      "name": "Чат клана",
+      "short_name": "Чат",
+      "url": "/?tab=chat",
+      "description": "Открыть клановый чат"
+    },
+    {
+      "name": "События",
+      "short_name": "События",
+      "url": "/?tab=calendar",
+      "description": "Предстоящие события клана"
+    }
+  ]
+}

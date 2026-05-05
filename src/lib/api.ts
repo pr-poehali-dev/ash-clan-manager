@@ -325,6 +325,11 @@ export async function markNotificationsRead(ids?: number[]): Promise<void> {
 export interface ChatMessage {
   id: number;
   text: string;
+  msg_type: "text" | "image" | "voice" | "gif";
+  image_url?: string | null;
+  voice_url?: string | null;
+  gif_url?: string | null;
+  duration?: number | null;
   created_at: string;
   user_nick: string;
   steam_id: string;
@@ -332,15 +337,32 @@ export interface ChatMessage {
   steam_avatar?: string;
 }
 
+export interface SendMessagePayload {
+  msg_type: "text" | "image" | "voice" | "gif";
+  text?: string;
+  image_url?: string;
+  voice_url?: string;
+  gif_url?: string;
+  duration?: number;
+}
+
 export async function getMessages(): Promise<ChatMessage[]> {
   return req<ChatMessage[]>("chat", "/");
 }
 
-export async function sendMessage(text: string): Promise<ChatMessage> {
+export async function sendMessage(payload: SendMessagePayload): Promise<ChatMessage> {
   return req<ChatMessage>("chat", "/", {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(payload),
   });
+}
+
+export async function uploadChatMedia(data: string, mime: string, folder: string): Promise<string> {
+  const r = await req<{ url: string }>("chat", "/?action=upload", {
+    method: "POST",
+    body: JSON.stringify({ data, mime, folder }),
+  });
+  return r.url;
 }
 
 // ─── Invites ─────────────────────────────────────────────────────────────────
