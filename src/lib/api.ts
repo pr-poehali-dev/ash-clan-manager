@@ -139,6 +139,58 @@ export interface Clan {
   max_members: number;
   founded_year: string;
   members_count?: number;
+  // profile fields
+  description?: string;
+  emblem_url?: string;
+  accent_color?: string;
+  discipline?: string;
+  region?: string;
+  discord_url?: string;
+  vk_url?: string;
+  website_url?: string;
+  is_open?: boolean;
+  min_rank?: string;
+}
+
+export interface ClanUpdatePayload {
+  name?: string;
+  tag?: string;
+  description?: string;
+  accent_color?: string;
+  discipline?: string;
+  region?: string;
+  discord_url?: string;
+  vk_url?: string;
+  website_url?: string;
+  is_open?: boolean;
+  min_rank?: string;
+}
+
+export async function updateClan(payload: ClanUpdatePayload): Promise<Clan> {
+  return req<Clan>("clan", "/update", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function uploadClanEmblem(imageBase64: string): Promise<string> {
+  const res = await req<{ emblem_url: string }>("clan", "/emblem", {
+    method: "POST",
+    body: JSON.stringify({ image_base64: imageBase64 }),
+  });
+  return res.emblem_url;
+}
+
+export async function kickMember(user_id: number): Promise<void> {
+  await req("clan", "/kick", { method: "POST", body: JSON.stringify({ user_id }) });
+}
+
+export async function promoteMember(user_id: number): Promise<void> {
+  await req("clan", "/promote", { method: "POST", body: JSON.stringify({ user_id }) });
+}
+
+export async function demoteMember(user_id: number): Promise<void> {
+  await req("clan", "/demote", { method: "POST", body: JSON.stringify({ user_id }) });
 }
 
 export interface Member {

@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import * as api from "@/lib/api";
 import type { User, Clan, Member, ActivityItem, ChatMessage, SearchUser, Invite, ClanEvent } from "@/lib/api";
 import SteamConnect from "./SteamConnect";
+import ClanSettings from "./ClanSettings";
 import NotificationPanel from "@/components/NotificationPanel";
 import ToastNotifications from "@/components/ToastNotification";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -301,14 +302,16 @@ function FeedSection({ clan, activity }: { clan: Clan | null; activity: Activity
 
 // ─── Clan Section ─────────────────────────────────────────────────────────────
 
-function ClanSection({ clan, members, user, onInviteClick }: {
-  clan: Clan | null; members: Member[]; user: User | null; onInviteClick: () => void;
+function ClanSection({ clan, members, user, onInviteClick, onSettingsClick }: {
+  clan: Clan | null; members: Member[]; user: User | null;
+  onInviteClick: () => void; onSettingsClick: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"info" | "members">("info");
 
   if (!clan) return <div className="text-center py-10 text-sm" style={{ color: "var(--ash-text-dim)" }}>Вы не состоите в клане</div>;
 
-  const canInvite = user?.role === "owner" || user?.role === "officer";
+  const accentColor = clan.accent_color ?? "var(--ash-orange)";
+  const canManage = user?.role === "owner" || user?.role === "officer";
 
   return (
     <div>
@@ -316,7 +319,7 @@ function ClanSection({ clan, members, user, onInviteClick }: {
         {(["info", "members"] as const).map(t => (
           <button key={t} onClick={() => setActiveTab(t)}
             className="px-4 py-1.5 rounded text-sm font-display font-medium transition-all"
-            style={activeTab === t ? { backgroundColor: "var(--ash-orange)", color: "#000" } : { color: "var(--ash-text-dim)" }}>
+            style={activeTab === t ? { backgroundColor: accentColor, color: "#000" } : { color: "var(--ash-text-dim)" }}>
             {t === "info" ? "Информация" : `Участники (${members.length})`}
           </button>
         ))}
@@ -324,64 +327,147 @@ function ClanSection({ clan, members, user, onInviteClick }: {
 
       {activeTab === "info" && (
         <div className="space-y-4 animate-fade-in">
-          <div className="p-5 rounded-md" style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", borderLeft: "2px solid var(--ash-orange)" }}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="font-display font-bold text-2xl text-white tracking-wider">{clan.tag}</div>
-                <div className="text-sm mt-0.5" style={{ color: "var(--ash-text-dim)" }}>{clan.name}</div>
-              </div>
-              <div className="text-right">
-                <div className="font-display font-bold text-lg" style={{ color: "var(--ash-orange)" }}>{clan.rank}</div>
-                <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>Уровень {clan.level}</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: "Основан", value: clan.founded_year },
-                { label: "Участников", value: `${members.length} / ${clan.max_members}` },
-                { label: "Побед", value: clan.wins.toLocaleString() },
-                { label: "Поражений", value: clan.losses.toLocaleString() },
-              ].map((r, i) => (
-                <div key={i}>
-                  <div className="text-xs uppercase tracking-wider mb-0.5" style={{ color: "var(--ash-text-dim)" }}>{r.label}</div>
-                  <div className="font-mono-ash text-sm text-white">{r.value}</div>
+          {/* Шапка клана */}
+          <div className="p-5 rounded-md overflow-hidden relative"
+            style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", borderLeft: `3px solid ${accentColor}` }}>
+            {/* фоновый градиент от акцентного */}
+            <div className="absolute inset-0 opacity-5 pointer-events-none"
+              style={{ background: `radial-gradient(ellipse at top left, ${accentColor}, transparent 70%)` }} />
+            <div className="relative flex items-start gap-4">
+              {/* Эмблема */}
+              {clan.emblem_url ? (
+                <img src={clan.emblem_url} alt={clan.name}
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border"
+                  style={{ borderColor: accentColor + "40" }} />
+              ) : (
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center font-display font-black text-xl flex-shrink-0"
+                  style={{ backgroundColor: accentColor + "20", color: accentColor, border: `1px solid ${accentColor}30` }}>
+                  {clan.tag.replace(/[[\]]/g, "").slice(0, 2)}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-5 rounded-md" style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
-            <div className="text-xs uppercase tracking-wider mb-3 font-display" style={{ color: "var(--ash-text-dim)" }}>Winrate клана</div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--ash-surface-3)" }}>
-                <div className="h-full rounded-full" style={{ width: `${clan.winrate}%`, background: "linear-gradient(90deg, #FF6B1A, #FF9A4D)" }} />
-              </div>
-              <span className="font-display font-bold text-sm" style={{ color: "var(--ash-orange)" }}>{clan.winrate}%</span>
-            </div>
-          </div>
-
-          <div className="p-5 rounded-md" style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
-            <div className="text-xs uppercase tracking-wider mb-3 font-display" style={{ color: "var(--ash-text-dim)" }}>Действия</div>
-            <div className="grid grid-cols-2 gap-2">
-              {canInvite && (
-                <button onClick={onInviteClick}
-                  className="flex items-center gap-2 px-3 py-2 rounded text-sm transition-all"
-                  style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-text)" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ash-orange)"; e.currentTarget.style.color = "var(--ash-orange)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text)"; }}>
-                  <Icon name="UserPlus" size={13} />
-                  Пригласить игрока
-                </button>
               )}
-              <button className="flex items-center gap-2 px-3 py-2 rounded text-sm transition-all"
-                style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-text)" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ash-orange)"; e.currentTarget.style.color = "var(--ash-orange)"; }}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-display font-bold text-xl text-white tracking-wider leading-tight">{clan.name}</div>
+                    <div className="font-mono-ash text-sm mt-0.5" style={{ color: accentColor }}>{clan.tag}</div>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <div className="font-display font-bold" style={{ color: accentColor }}>{clan.rank}</div>
+                    <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>Ур. {clan.level}</div>
+                  </div>
+                </div>
+                {clan.description && (
+                  <div className="text-sm mt-2 leading-relaxed" style={{ color: "var(--ash-text-dim)" }}>
+                    {clan.description}
+                  </div>
+                )}
+                {/* Теги */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {clan.discipline && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-display"
+                      style={{ backgroundColor: accentColor + "20", color: accentColor }}>
+                      {clan.discipline}
+                    </span>
+                  )}
+                  {clan.region && (
+                    <span className="text-xs px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>
+                      {clan.region}
+                    </span>
+                  )}
+                  <span className="text-xs px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: (clan.is_open ?? true) ? "#10b98120" : "#ef444420",
+                             color: (clan.is_open ?? true) ? "#10b981" : "#ef4444" }}>
+                    {(clan.is_open ?? true) ? "Открытый набор" : "Набор закрыт"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Статистика */}
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: "Основан", value: clan.founded_year },
+              { label: "Участников", value: `${members.length}/${clan.max_members}` },
+              { label: "Побед", value: clan.wins.toLocaleString() },
+              { label: "Winrate", value: `${clan.winrate}%` },
+            ].map((r, i) => (
+              <div key={i} className="p-3 rounded-md text-center"
+                style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+                <div className="font-mono-ash font-bold text-sm text-white">{r.value}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--ash-text-dim)" }}>{r.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Winrate bar */}
+          <div className="p-4 rounded-md" style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--ash-surface-3)" }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${clan.winrate}%`, backgroundColor: accentColor }} />
+              </div>
+              <span className="font-display font-bold text-sm flex-shrink-0" style={{ color: accentColor }}>
+                {clan.winrate}%
+              </span>
+            </div>
+          </div>
+
+          {/* Соцсети */}
+          {(clan.discord_url || clan.vk_url || clan.website_url) && (
+            <div className="flex flex-wrap gap-2">
+              {clan.discord_url && (
+                <a href={clan.discord_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded text-xs transition-all"
+                  style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#7289da"; e.currentTarget.style.color = "#7289da"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text-dim)"; }}>
+                  <Icon name="Hash" size={12} /> Discord
+                </a>
+              )}
+              {clan.vk_url && (
+                <a href={clan.vk_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded text-xs transition-all"
+                  style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#4c75a3"; e.currentTarget.style.color = "#4c75a3"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text-dim)"; }}>
+                  <Icon name="Users" size={12} /> ВКонтакте
+                </a>
+              )}
+              {clan.website_url && (
+                <a href={clan.website_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded text-xs transition-all"
+                  style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text-dim)"; }}>
+                  <Icon name="Globe" size={12} /> Сайт
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Действия */}
+          {canManage && (
+            <div className="flex gap-2">
+              <button onClick={onInviteClick}
+                className="flex items-center gap-2 px-4 py-2 rounded text-sm transition-all"
+                style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", color: "var(--ash-text)" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text)"; }}>
+                <Icon name="UserPlus" size={13} />
+                Пригласить
+              </button>
+              <button onClick={onSettingsClick}
+                className="flex items-center gap-2 px-4 py-2 rounded text-sm transition-all"
+                style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", color: "var(--ash-text)" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text)"; }}>
                 <Icon name="Settings" size={13} />
                 Настройки клана
               </button>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -393,17 +479,20 @@ function ClanSection({ clan, members, user, onInviteClick }: {
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--ash-surface-3)"; e.currentTarget.style.borderColor = "var(--ash-border)"; }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = ""; e.currentTarget.style.borderColor = "transparent"; }}>
               <div className="relative">
-                <MemberAvatar initials={m.steam_nick.slice(0, 2).toUpperCase()} size="md" />
+                {m.steam_avatar ? (
+                  <img src={m.steam_avatar} alt={m.steam_nick} className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
+                ) : (
+                  <MemberAvatar initials={m.steam_nick.slice(0, 2).toUpperCase()} size="md" />
+                )}
                 <span className="absolute -bottom-0.5 -right-0.5"><StatusDot status={m.status} /></span>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-white">{m.steam_nick}</span>
-                  {m.steam_id && <Icon name="Gamepad2" size={11} style={{ color: "#38bdf8" }} />}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{m.role}</span>
-                  {m.rank && <><span style={{ color: "var(--ash-text-dim)" }}>·</span><span className="text-xs" style={{ color: "var(--ash-orange)" }}>{m.rank}</span></>}
+                  {m.rank && <><span style={{ color: "var(--ash-text-dim)" }}>·</span><span className="text-xs" style={{ color: accentColor }}>{m.rank}</span></>}
                 </div>
               </div>
               <div className="text-right">
@@ -868,6 +957,7 @@ export default function Index() {
   const [showSteamConnect, setShowSteamConnect] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showCreateClan, setShowCreateClan] = useState(false);
+  const [showClanSettings, setShowClanSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
 
@@ -927,6 +1017,19 @@ export default function Index() {
       <SteamConnect
         onSuccess={u => { setUser(u); setShowSteamConnect(false); load(); }}
         onBack={() => setShowSteamConnect(false)}
+      />
+    );
+  }
+
+  if (showClanSettings && clan && user) {
+    return (
+      <ClanSettings
+        clan={clan}
+        members={members}
+        user={user}
+        onBack={() => setShowClanSettings(false)}
+        onUpdated={updatedClan => { setClan(updatedClan); }}
+        onMembersChanged={() => { api.getMembers().then(setMembers).catch(() => {}); }}
       />
     );
   }
@@ -1070,7 +1173,7 @@ export default function Index() {
         ) : (
           <>
             {activeTab === "feed" && <FeedSection clan={clan} activity={activity} />}
-            {activeTab === "clan" && <ClanSection clan={clan} members={members} user={user} onInviteClick={() => setShowInvite(true)} />}
+            {activeTab === "clan" && <ClanSection clan={clan} members={members} user={user} onInviteClick={() => setShowInvite(true)} onSettingsClick={() => setShowClanSettings(true)} />}
             {activeTab === "calendar" && <CalendarSection user={user} />}
             {activeTab === "chat" && (
               <ChatSection
