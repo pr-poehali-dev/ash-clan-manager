@@ -1,95 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+import * as api from "@/lib/api";
+import type { User, Clan, Member, ActivityItem, ChatMessage, SearchUser, Invite } from "@/lib/api";
 
 type Tab = "feed" | "clan" | "calendar" | "chat" | "ratings";
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const CLAN = {
-  name: "SHADOW WOLVES",
-  tag: "[SW]",
-  level: 42,
-  members: 24,
-  maxMembers: 30,
-  rank: "Diamond",
-  founded: "2019",
-  wins: 1847,
-  losses: 412,
-  winrate: 81.8,
-};
-
-const ACTIVITY = [
-  { id: 1, user: "Vortex_X", avatar: "VX", action: "выиграл матч в CS2", game: "CS2", time: "2 мин назад", type: "win", steam: true },
-  { id: 2, user: "ShadowByte", avatar: "SB", action: "присоединился к клану", game: null, time: "18 мин назад", type: "join", steam: false },
-  { id: 3, user: "NightHunter", avatar: "NH", action: "достиг звания Легенда", game: "Dota 2", time: "1 ч назад", type: "rank", steam: true },
-  { id: 4, user: "CryptoKill", avatar: "CK", action: "набрал 42 убийства в матче", game: "CS2", time: "2 ч назад", type: "record", steam: true },
-  { id: 5, user: "GhostMind", avatar: "GM", action: "выиграл турнир #12", game: "Valorant", time: "3 ч назад", type: "win", steam: false },
-  { id: 6, user: "Vortex_X", avatar: "VX", action: "обновил Steam-профиль", game: "Steam", time: "5 ч назад", type: "steam", steam: true },
-  { id: 7, user: "ZeroLatency", avatar: "ZL", action: "создал событие «Ночной рейд»", game: null, time: "6 ч назад", type: "event", steam: false },
-  { id: 8, user: "ShadowByte", avatar: "SB", action: "новый рекорд KDA 8.4", game: "CS2", time: "8 ч назад", type: "record", steam: true },
-];
-
-const MEMBERS = [
-  { id: 1, name: "Vortex_X", role: "Лидер", rank: "Global Elite", games: ["CS2", "Dota 2"], status: "online", kda: 3.2, wins: 412, steam: "vortex_x_steam" },
-  { id: 2, name: "NightHunter", role: "Офицер", rank: "Легенда", games: ["Dota 2", "LoL"], status: "in-game", kda: 4.1, wins: 387, steam: "nighthunter99" },
-  { id: 3, name: "CryptoKill", role: "Офицер", rank: "Global Elite", games: ["CS2"], status: "online", kda: 5.7, wins: 299, steam: "cryptokill_" },
-  { id: 4, name: "GhostMind", role: "Участник", rank: "Diamond", games: ["Valorant", "CS2"], status: "offline", kda: 2.8, wins: 201, steam: null },
-  { id: 5, name: "ShadowByte", role: "Участник", rank: "Immortal", games: ["CS2"], status: "in-game", kda: 3.9, wins: 178, steam: "shadowbyte_gg" },
-  { id: 6, name: "ZeroLatency", role: "Участник", rank: "Radiant", games: ["Valorant"], status: "online", kda: 6.2, wins: 312, steam: "zerolatency" },
-  { id: 7, name: "PhantomEdge", role: "Участник", rank: "Supreme", games: ["CS2", "Valorant"], status: "offline", kda: 2.4, wins: 145, steam: null },
-  { id: 8, name: "IronClad77", role: "Новичок", rank: "Platinum", games: ["Dota 2"], status: "online", kda: 1.9, wins: 88, steam: "ironclad_77" },
-];
-
-const EVENTS = [
-  { id: 1, date: "08 МАЯ", day: "Чт", title: "Ночной рейд CS2", type: "Клановый матч", participants: 8, max: 10, time: "22:00", urgent: true },
-  { id: 2, date: "10 МАЯ", day: "Сб", title: "Турнир «Пепел»", type: "Турнир", participants: 24, max: 24, time: "18:00", urgent: false },
-  { id: 3, date: "12 МАЯ", day: "Пн", title: "Тренировочный сбор", type: "Тренировка", participants: 5, max: 15, time: "20:00", urgent: false },
-  { id: 4, date: "15 МАЯ", day: "Чт", title: "Стрим клана", type: "Стрим", participants: 3, max: 5, time: "19:00", urgent: false },
-  { id: 5, date: "18 МАЯ", day: "Вс", title: "Grand Final Dota 2", type: "Турнир", participants: 12, max: 12, time: "16:00", urgent: false },
-];
-
-const MESSAGES = [
-  { id: 1, user: "Vortex_X", avatar: "VX", text: "Всем готовиться к турниру в субботу!", time: "21:42", role: "Лидер" },
-  { id: 2, user: "CryptoKill", avatar: "CK", text: "Я в деле. Кто ещё?", time: "21:43", role: "Офицер" },
-  { id: 3, user: "NightHunter", avatar: "NH", text: "Я и ZeroLatency точно будем", time: "21:44", role: "Офицер" },
-  { id: 4, user: "ShadowByte", avatar: "SB", text: "Кто-нибудь видел стату противников? Там серьёзные ребята из TOP-10", time: "21:45", role: "Участник" },
-  { id: 5, user: "Vortex_X", avatar: "VX", text: "Видел. Нам нужна чёткая стратегия. Завтра в 20:00 разбор тактик в войсе", time: "21:46", role: "Лидер" },
-  { id: 6, user: "ZeroLatency", avatar: "ZL", text: "Буду. Уже скачал демки их последних матчей", time: "21:47", role: "Участник" },
-  { id: 7, user: "GhostMind", avatar: "GM", text: "можно я тоже зайду послушать?", time: "21:50", role: "Участник" },
-  { id: 8, user: "Vortex_X", avatar: "VX", text: "Конечно, всем участвовать обязательно!", time: "21:51", role: "Лидер" },
-];
-
-const TOP_PLAYERS = [
-  { rank: 1, name: "ZeroLatency", kda: 6.2, wins: 312, winrate: 89, game: "Valorant", delta: "+0.3" },
-  { rank: 2, name: "CryptoKill", kda: 5.7, wins: 299, winrate: 86, game: "CS2", delta: "+0.8" },
-  { rank: 3, name: "NightHunter", kda: 4.1, wins: 387, winrate: 85, game: "Dota 2", delta: "-0.1" },
-  { rank: 4, name: "ShadowByte", kda: 3.9, wins: 178, winrate: 78, game: "CS2", delta: "+0.4" },
-  { rank: 5, name: "Vortex_X", kda: 3.2, wins: 412, winrate: 82, game: "CS2", delta: "-0.2" },
-  { rank: 6, name: "GhostMind", kda: 2.8, wins: 201, winrate: 74, game: "Valorant", delta: "+0.1" },
-  { rank: 7, name: "PhantomEdge", kda: 2.4, wins: 145, winrate: 71, game: "CS2", delta: "-0.5" },
-  { rank: 8, name: "IronClad77", kda: 1.9, wins: 88, winrate: 62, game: "Dota 2", delta: "+0.2" },
-];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const StatusDot = ({ status }: { status: string }) => {
-  const colors: Record<string, string> = {
-    online: "bg-green-400",
-    "in-game": "bg-orange-400",
-    offline: "bg-gray-600",
-  };
+  const colors: Record<string, string> = { online: "bg-green-400", "in-game": "bg-orange-400", offline: "bg-gray-600" };
   return <span className={`inline-block w-2 h-2 rounded-full ${colors[status] ?? "bg-gray-600"}`} />;
 };
 
 const MemberAvatar = ({ initials, size = "md" }: { initials: string; size?: "sm" | "md" | "lg" }) => {
   const sizes = { sm: "w-7 h-7 text-xs", md: "w-9 h-9 text-sm", lg: "w-12 h-12 text-base" };
   return (
-    <div
-      className={`${sizes[size]} rounded-md flex items-center justify-center font-display font-semibold flex-shrink-0`}
-      style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-orange)" }}
-    >
+    <div className={`${sizes[size]} rounded-md flex items-center justify-center font-display font-semibold flex-shrink-0`}
+      style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-orange)" }}>
       {initials}
     </div>
   );
@@ -97,67 +24,320 @@ const MemberAvatar = ({ initials, size = "md" }: { initials: string; size?: "sm"
 
 const ActivityTypeIcon = ({ type }: { type: string }) => {
   const map: Record<string, { icon: string; color: string }> = {
-    win: { icon: "Trophy", color: "#facc15" },
-    join: { icon: "UserPlus", color: "#4ade80" },
-    rank: { icon: "Star", color: "#fb923c" },
-    record: { icon: "Zap", color: "#fb923c" },
-    steam: { icon: "RefreshCw", color: "#38bdf8" },
-    event: { icon: "Calendar", color: "#a78bfa" },
+    win: { icon: "Trophy", color: "#facc15" }, join: { icon: "UserPlus", color: "#4ade80" },
+    rank: { icon: "Star", color: "#fb923c" }, record: { icon: "Zap", color: "#fb923c" },
+    steam: { icon: "RefreshCw", color: "#38bdf8" }, event: { icon: "Calendar", color: "#a78bfa" },
+    info: { icon: "Info", color: "#9ca3af" },
   };
   const m = map[type] ?? { icon: "Circle", color: "#666" };
   return <Icon name={m.icon} size={12} style={{ color: m.color }} />;
 };
 
-// ─── Sections ─────────────────────────────────────────────────────────────────
+function timeAgo(dateStr: string): string {
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+  if (diff < 60) return "только что";
+  if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+  return `${Math.floor(diff / 86400)} д назад`;
+}
 
-function FeedSection() {
+// ─── Auth / Register Modal ────────────────────────────────────────────────────
+
+function RegisterModal({ onDone }: { onDone: (user: User) => void }) {
+  const [nick, setNick] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async () => {
+    if (!nick.trim() || nick.trim().length < 2) { setError("Ник должен быть не менее 2 символов"); return; }
+    setLoading(true); setError("");
+    const steamId = `manual_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const user = await api.register(steamId, nick.trim()).catch(e => { setError(e.message); return null; });
+    setLoading(false);
+    if (user) onDone(user);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+      <div className="w-full max-w-sm p-6 rounded-lg animate-fade-in"
+        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--ash-orange)" }}>
+            <span className="font-display font-black text-sm text-black">A</span>
+          </div>
+          <div>
+            <div className="font-display font-bold text-white">Добро пожаловать в ASH</div>
+            <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>Введите ваш игровой ник для регистрации</div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>
+              Игровой ник (Steam)
+            </label>
+            <input value={nick} onChange={e => setNick(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()}
+              placeholder="Ваш Steam-ник..."
+              className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none transition-colors"
+              style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+          </div>
+          {error && <div className="text-xs text-red-400">{error}</div>}
+          <button onClick={handleSubmit} disabled={loading}
+            className="w-full py-2.5 rounded-md font-display font-medium text-black transition-opacity"
+            style={{ backgroundColor: "var(--ash-orange)", opacity: loading ? 0.6 : 1 }}>
+            {loading ? "Подключение..." : "Войти / Зарегистрироваться"}
+          </button>
+        </div>
+
+        <div className="mt-4 text-xs text-center" style={{ color: "var(--ash-text-dim)" }}>
+          После входа вы сможете создать клан или принять приглашение
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Invite Modal ─────────────────────────────────────────────────────────────
+
+function InviteModal({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState<number[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (query.trim().length < 2) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const r = await api.searchUsers(query).catch(() => []);
+      setResults(r); setLoading(false);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const invite = async (userId: number) => {
+    setError("");
+    await api.sendInvite(userId).catch(e => { setError(e.message); return null; });
+    setSent(prev => [...prev, userId]);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+      <div className="w-full max-w-md p-6 rounded-lg animate-fade-in"
+        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+        <div className="flex items-center justify-between mb-5">
+          <div className="font-display font-bold text-white">Пригласить игрока</div>
+          <button onClick={onClose}><Icon name="X" size={16} style={{ color: "var(--ash-text-dim)" }} /></button>
+        </div>
+
+        <input value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Поиск по Steam-нику..."
+          className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none transition-colors mb-3"
+          style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
+          onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+          onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+
+        {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
+
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {loading && <div className="text-xs text-center py-4" style={{ color: "var(--ash-text-dim)" }}>Поиск...</div>}
+          {!loading && query.length >= 2 && results.length === 0 && (
+            <div className="text-xs text-center py-4" style={{ color: "var(--ash-text-dim)" }}>Игроки не найдены</div>
+          )}
+          {results.map(u => (
+            <div key={u.id} className="flex items-center gap-3 p-3 rounded-md"
+              style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}>
+              <MemberAvatar initials={u.steam_nick.slice(0, 2).toUpperCase()} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-white">{u.steam_nick}</div>
+                <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>
+                  {u.rank || "Без ранга"} · {u.clan_id ? "В клане" : "Без клана"}
+                </div>
+              </div>
+              <button onClick={() => invite(u.id)} disabled={sent.includes(u.id) || !!u.clan_id}
+                className="px-3 py-1 rounded text-xs font-display transition-all"
+                style={{
+                  backgroundColor: sent.includes(u.id) ? "var(--ash-surface-3)" : "var(--ash-orange)",
+                  color: sent.includes(u.id) ? "var(--ash-text-dim)" : "#000",
+                  opacity: u.clan_id ? 0.4 : 1,
+                }}>
+                {sent.includes(u.id) ? "Отправлено" : u.clan_id ? "В клане" : "Пригласить"}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 text-xs" style={{ color: "var(--ash-text-dim)" }}>
+          Игрок должен быть зарегистрирован в ASH чтобы появиться в поиске
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Create Clan Modal ────────────────────────────────────────────────────────
+
+function CreateClanModal({ onClose, onCreated }: { onClose: () => void; onCreated: (clan: Clan) => void }) {
+  const [name, setName] = useState("");
+  const [tag, setTag] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleCreate = async () => {
+    if (!name.trim() || !tag.trim()) { setError("Заполните все поля"); return; }
+    setLoading(true); setError("");
+    const clan = await api.createClan(name.trim(), tag.trim()).catch(e => { setError(e.message); return null; });
+    setLoading(false);
+    if (clan) onCreated(clan);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+      <div className="w-full max-w-sm p-6 rounded-lg animate-fade-in"
+        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+        <div className="flex items-center justify-between mb-5">
+          <div className="font-display font-bold text-white">Создать клан</div>
+          <button onClick={onClose}><Icon name="X" size={16} style={{ color: "var(--ash-text-dim)" }} /></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>
+              Название клана
+            </label>
+            <input value={name} onChange={e => setName(e.target.value)}
+              placeholder="SHADOW WOLVES"
+              className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none"
+              style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+          </div>
+          <div>
+            <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>
+              Тег (до 8 символов)
+            </label>
+            <input value={tag} onChange={e => setTag(e.target.value.slice(0, 8))}
+              placeholder="[SW]"
+              className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none"
+              style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+          </div>
+          {error && <div className="text-xs text-red-400">{error}</div>}
+          <button onClick={handleCreate} disabled={loading}
+            className="w-full py-2.5 rounded-md font-display font-medium text-black"
+            style={{ backgroundColor: "var(--ash-orange)", opacity: loading ? 0.6 : 1 }}>
+            {loading ? "Создание..." : "Создать клан"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── No Clan Screen ───────────────────────────────────────────────────────────
+
+function NoClanScreen({ user, invites, onCreateClan, onAccept, onDecline, refreshInvites }:
+  { user: User; invites: Invite[]; onCreateClan: () => void; onAccept: (id: number) => void; onDecline: (id: number) => void; refreshInvites: () => void }) {
+
+  useEffect(() => { refreshInvites(); }, []);
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
+      <div className="text-center">
+        <div className="font-display font-bold text-2xl text-white mb-2">Вы не в клане</div>
+        <div className="text-sm" style={{ color: "var(--ash-text-dim)" }}>Создайте свой клан или примите приглашение от другого игрока</div>
+      </div>
+
+      <div className="flex justify-center">
+        <button onClick={onCreateClan}
+          className="flex items-center gap-2 px-6 py-3 rounded-md font-display font-medium text-black transition-opacity"
+          style={{ backgroundColor: "var(--ash-orange)" }}>
+          <Icon name="Plus" size={15} />
+          Создать клан
+        </button>
+      </div>
+
+      {invites.length > 0 && (
+        <div>
+          <div className="text-xs uppercase font-display tracking-wider mb-3" style={{ color: "var(--ash-text-dim)" }}>
+            Входящие приглашения ({invites.length})
+          </div>
+          <div className="space-y-2">
+            {invites.map(inv => (
+              <div key={inv.id} className="flex items-center gap-3 p-4 rounded-md"
+                style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-white">{inv.clan_name} <span style={{ color: "var(--ash-text-dim)" }}>{inv.clan_tag}</span></div>
+                  <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>от {inv.from_nick} · {timeAgo(inv.created_at)}</div>
+                </div>
+                <button onClick={() => onAccept(inv.id)}
+                  className="px-3 py-1 rounded text-xs font-display text-black"
+                  style={{ backgroundColor: "var(--ash-orange)" }}>
+                  Принять
+                </button>
+                <button onClick={() => onDecline(inv.id)}
+                  className="px-3 py-1 rounded text-xs font-display transition-all"
+                  style={{ border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}>
+                  Отклонить
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Feed Section ─────────────────────────────────────────────────────────────
+
+function FeedSection({ clan, activity }: { clan: Clan | null; activity: ActivityItem[] }) {
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: "Побед", value: CLAN.wins.toLocaleString(), icon: "Trophy" },
-          { label: "Winrate", value: `${CLAN.winrate}%`, icon: "TrendingUp" },
-          { label: "Участников", value: `${CLAN.members}/${CLAN.maxMembers}`, icon: "Users" },
-        ].map((s, i) => (
-          <div
-            key={i}
-            className="p-4 rounded-md animate-fade-in"
-            style={{
-              backgroundColor: "var(--ash-surface-2)",
-              border: "1px solid var(--ash-border)",
-              animationDelay: `${i * 0.07}s`,
-              opacity: 0,
-            }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Icon name={s.icon} size={12} style={{ color: "var(--ash-orange)" }} />
-              <span className="text-xs uppercase tracking-wider font-display" style={{ color: "var(--ash-text-dim)" }}>{s.label}</span>
+      {clan && (
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { label: "Побед", value: clan.wins.toLocaleString(), icon: "Trophy" },
+            { label: "Winrate", value: `${clan.winrate}%`, icon: "TrendingUp" },
+            { label: "Участников", value: `${clan.members_count ?? "—"}/${clan.max_members}`, icon: "Users" },
+          ].map((s, i) => (
+            <div key={i} className="p-4 rounded-md animate-fade-in"
+              style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", animationDelay: `${i * 0.07}s`, opacity: 0 }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Icon name={s.icon} size={12} style={{ color: "var(--ash-orange)" }} />
+                <span className="text-xs uppercase tracking-wider font-display" style={{ color: "var(--ash-text-dim)" }}>{s.label}</span>
+              </div>
+              <div className="font-display font-bold text-xl text-white">{s.value}</div>
             </div>
-            <div className="font-display font-bold text-xl text-white">{s.value}</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center gap-3 mb-4">
         <span className="font-display text-xs uppercase tracking-widest" style={{ color: "var(--ash-text-dim)" }}>Лента активности</span>
         <div className="flex-1 h-px" style={{ backgroundColor: "var(--ash-border)" }} />
-        <span className="text-xs font-mono-ash" style={{ color: "var(--ash-text-dim)" }}>{ACTIVITY.length} событий</span>
+        <span className="text-xs font-mono-ash" style={{ color: "var(--ash-text-dim)" }}>{activity.length} событий</span>
       </div>
 
+      {activity.length === 0 && (
+        <div className="text-center py-10 text-sm" style={{ color: "var(--ash-text-dim)" }}>
+          Пока нет активности. Начните играть — и она появится!
+        </div>
+      )}
+
       <div className="space-y-1">
-        {ACTIVITY.map((item, i) => (
-          <div
-            key={item.id}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer animate-fade-in transition-colors"
+        {activity.map((item, i) => (
+          <div key={item.id} className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer animate-fade-in transition-colors"
             style={{ animationDelay: `${0.2 + i * 0.05}s`, opacity: 0 }}
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--ash-surface-3)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "")}
-          >
-            <MemberAvatar initials={item.avatar} size="sm" />
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "")}>
+            <MemberAvatar initials={item.user_nick.slice(0, 2).toUpperCase()} size="sm" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-white">{item.user}</span>
-                {item.steam && <Icon name="Gamepad2" size={11} style={{ color: "#38bdf8" }} />}
+                <span className="text-sm font-medium text-white">{item.user_nick}</span>
                 <ActivityTypeIcon type={item.type} />
               </div>
               <div className="text-xs truncate" style={{ color: "var(--ash-text-dim)" }}>
@@ -165,7 +345,7 @@ function FeedSection() {
                 {item.game && <span className="ml-1" style={{ color: "var(--ash-orange)", opacity: 0.7 }}>· {item.game}</span>}
               </div>
             </div>
-            <span className="text-xs font-mono-ash whitespace-nowrap" style={{ color: "var(--ash-text-dim)" }}>{item.time}</span>
+            <span className="text-xs font-mono-ash whitespace-nowrap" style={{ color: "var(--ash-text-dim)" }}>{timeAgo(item.created_at)}</span>
           </div>
         ))}
       </div>
@@ -173,50 +353,48 @@ function FeedSection() {
   );
 }
 
-function ClanSection() {
+// ─── Clan Section ─────────────────────────────────────────────────────────────
+
+function ClanSection({ clan, members, user, onInviteClick }: {
+  clan: Clan | null; members: Member[]; user: User | null; onInviteClick: () => void;
+}) {
   const [activeTab, setActiveTab] = useState<"info" | "members">("info");
+
+  if (!clan) return <div className="text-center py-10 text-sm" style={{ color: "var(--ash-text-dim)" }}>Вы не состоите в клане</div>;
+
+  const canInvite = user?.role === "owner" || user?.role === "officer";
 
   return (
     <div>
       <div className="flex gap-1 mb-5 p-1 rounded-md w-fit" style={{ backgroundColor: "var(--ash-surface-2)" }}>
         {(["info", "members"] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(t)}
+          <button key={t} onClick={() => setActiveTab(t)}
             className="px-4 py-1.5 rounded text-sm font-display font-medium transition-all"
-            style={
-              activeTab === t
-                ? { backgroundColor: "var(--ash-orange)", color: "#000" }
-                : { color: "var(--ash-text-dim)" }
-            }
-          >
-            {t === "info" ? "Информация" : `Участники (${MEMBERS.length})`}
+            style={activeTab === t ? { backgroundColor: "var(--ash-orange)", color: "#000" } : { color: "var(--ash-text-dim)" }}>
+            {t === "info" ? "Информация" : `Участники (${members.length})`}
           </button>
         ))}
       </div>
 
       {activeTab === "info" && (
         <div className="space-y-4 animate-fade-in">
-          <div
-            className="p-5 rounded-md"
-            style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", borderLeft: "2px solid var(--ash-orange)" }}
-          >
+          <div className="p-5 rounded-md" style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", borderLeft: "2px solid var(--ash-orange)" }}>
             <div className="flex items-start justify-between mb-4">
               <div>
-                <div className="font-display font-bold text-2xl text-white tracking-wider">{CLAN.tag}</div>
-                <div className="text-sm mt-0.5" style={{ color: "var(--ash-text-dim)" }}>{CLAN.name}</div>
+                <div className="font-display font-bold text-2xl text-white tracking-wider">{clan.tag}</div>
+                <div className="text-sm mt-0.5" style={{ color: "var(--ash-text-dim)" }}>{clan.name}</div>
               </div>
               <div className="text-right">
-                <div className="font-display font-bold text-lg" style={{ color: "var(--ash-orange)" }}>{CLAN.rank}</div>
-                <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>Уровень {CLAN.level}</div>
+                <div className="font-display font-bold text-lg" style={{ color: "var(--ash-orange)" }}>{clan.rank}</div>
+                <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>Уровень {clan.level}</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: "Основан", value: CLAN.founded },
-                { label: "Участников", value: `${CLAN.members} / ${CLAN.maxMembers}` },
-                { label: "Побед", value: CLAN.wins.toLocaleString() },
-                { label: "Поражений", value: CLAN.losses.toLocaleString() },
+                { label: "Основан", value: clan.founded_year },
+                { label: "Участников", value: `${members.length} / ${clan.max_members}` },
+                { label: "Побед", value: clan.wins.toLocaleString() },
+                { label: "Поражений", value: clan.losses.toLocaleString() },
               ].map((r, i) => (
                 <div key={i}>
                   <div className="text-xs uppercase tracking-wider mb-0.5" style={{ color: "var(--ash-text-dim)" }}>{r.label}</div>
@@ -230,42 +408,32 @@ function ClanSection() {
             <div className="text-xs uppercase tracking-wider mb-3 font-display" style={{ color: "var(--ash-text-dim)" }}>Winrate клана</div>
             <div className="flex items-center gap-3 mb-2">
               <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--ash-surface-3)" }}>
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${CLAN.winrate}%`, background: "linear-gradient(90deg, #FF6B1A, #FF9A4D)" }}
-                />
+                <div className="h-full rounded-full" style={{ width: `${clan.winrate}%`, background: "linear-gradient(90deg, #FF6B1A, #FF9A4D)" }} />
               </div>
-              <span className="font-display font-bold text-sm" style={{ color: "var(--ash-orange)" }}>{CLAN.winrate}%</span>
+              <span className="font-display font-bold text-sm" style={{ color: "var(--ash-orange)" }}>{clan.winrate}%</span>
             </div>
-            <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>Входит в топ 5% кланов</div>
           </div>
 
           <div className="p-5 rounded-md" style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
-            <div className="text-xs uppercase tracking-wider mb-3 font-display" style={{ color: "var(--ash-text-dim)" }}>Быстрые действия</div>
+            <div className="text-xs uppercase tracking-wider mb-3 font-display" style={{ color: "var(--ash-text-dim)" }}>Действия</div>
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: "Пригласить игрока", icon: "UserPlus" },
-                { label: "Редактировать клан", icon: "Settings" },
-                { label: "Войновой журнал", icon: "BookOpen" },
-                { label: "Экспорт статистики", icon: "Download" },
-              ].map((a, i) => (
-                <button
-                  key={i}
+              {canInvite && (
+                <button onClick={onInviteClick}
                   className="flex items-center gap-2 px-3 py-2 rounded text-sm transition-all"
                   style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-text)" }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = "var(--ash-orange)";
-                    e.currentTarget.style.color = "var(--ash-orange)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = "var(--ash-border)";
-                    e.currentTarget.style.color = "var(--ash-text)";
-                  }}
-                >
-                  <Icon name={a.icon} size={13} />
-                  {a.label}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ash-orange)"; e.currentTarget.style.color = "var(--ash-orange)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text)"; }}>
+                  <Icon name="UserPlus" size={13} />
+                  Пригласить игрока
                 </button>
-              ))}
+              )}
+              <button className="flex items-center gap-2 px-3 py-2 rounded text-sm transition-all"
+                style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-text)" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ash-orange)"; e.currentTarget.style.color = "var(--ash-orange)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text)"; }}>
+                <Icon name="Settings" size={13} />
+                Настройки клана
+              </button>
             </div>
           </div>
         </div>
@@ -273,35 +441,23 @@ function ClanSection() {
 
       {activeTab === "members" && (
         <div className="space-y-1 animate-fade-in">
-          {MEMBERS.map((m, i) => (
-            <div
-              key={m.id}
-              className="flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all"
+          {members.map((m) => (
+            <div key={m.id} className="flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all"
               style={{ border: "1px solid transparent" }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = "var(--ash-surface-3)";
-                e.currentTarget.style.borderColor = "var(--ash-border)";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = "";
-                e.currentTarget.style.borderColor = "transparent";
-              }}
-            >
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--ash-surface-3)"; e.currentTarget.style.borderColor = "var(--ash-border)"; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = ""; e.currentTarget.style.borderColor = "transparent"; }}>
               <div className="relative">
-                <MemberAvatar initials={m.name.slice(0, 2).toUpperCase()} size="md" />
-                <span className="absolute -bottom-0.5 -right-0.5">
-                  <StatusDot status={m.status} />
-                </span>
+                <MemberAvatar initials={m.steam_nick.slice(0, 2).toUpperCase()} size="md" />
+                <span className="absolute -bottom-0.5 -right-0.5"><StatusDot status={m.status} /></span>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white">{m.name}</span>
-                  {m.steam && <Icon name="Gamepad2" size={11} style={{ color: "#38bdf8" }} />}
+                  <span className="text-sm font-medium text-white">{m.steam_nick}</span>
+                  {m.steam_id && <Icon name="Gamepad2" size={11} style={{ color: "#38bdf8" }} />}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{m.role}</span>
-                  <span style={{ color: "var(--ash-text-dim)" }}>·</span>
-                  <span className="text-xs" style={{ color: "var(--ash-orange)" }}>{m.rank}</span>
+                  {m.rank && <><span style={{ color: "var(--ash-text-dim)" }}>·</span><span className="text-xs" style={{ color: "var(--ash-orange)" }}>{m.rank}</span></>}
                 </div>
               </div>
               <div className="text-right">
@@ -316,37 +472,34 @@ function ClanSection() {
   );
 }
 
+// ─── Calendar Section ─────────────────────────────────────────────────────────
+
+const MOCK_EVENTS = [
+  { id: 1, date: "08 МАЯ", day: "Чт", title: "Ночной рейд CS2", type: "Клановый матч", participants: 8, max: 10, time: "22:00", urgent: true },
+  { id: 2, date: "10 МАЯ", day: "Сб", title: "Турнир «Пепел»", type: "Турнир", participants: 24, max: 24, time: "18:00", urgent: false },
+  { id: 3, date: "12 МАЯ", day: "Пн", title: "Тренировочный сбор", type: "Тренировка", participants: 5, max: 15, time: "20:00", urgent: false },
+];
+
 function CalendarSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="font-display font-semibold text-white">Май 2026</div>
-          <div className="text-xs mt-0.5" style={{ color: "var(--ash-text-dim)" }}>5 предстоящих событий</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--ash-text-dim)" }}>Предстоящие события</div>
         </div>
-        <button
-          className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-display font-medium transition-colors text-black"
-          style={{ backgroundColor: "var(--ash-orange)" }}
-        >
+        <button className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-display font-medium text-black"
+          style={{ backgroundColor: "var(--ash-orange)" }}>
           <Icon name="Plus" size={13} />
           Событие
         </button>
       </div>
-
       <div className="space-y-2">
-        {EVENTS.map((ev, i) => (
-          <div
-            key={ev.id}
-            className="flex items-center gap-4 p-4 rounded-md cursor-pointer transition-all animate-fade-in"
-            style={{
-              backgroundColor: "var(--ash-surface-2)",
-              border: `1px solid ${ev.urgent ? "rgba(255,107,26,0.5)" : "var(--ash-border)"}`,
-              animationDelay: `${i * 0.07}s`,
-              opacity: 0,
-            }}
+        {MOCK_EVENTS.map((ev, i) => (
+          <div key={ev.id} className="flex items-center gap-4 p-4 rounded-md cursor-pointer transition-all animate-fade-in"
+            style={{ backgroundColor: "var(--ash-surface-2)", border: `1px solid ${ev.urgent ? "rgba(255,107,26,0.5)" : "var(--ash-border)"}`, animationDelay: `${i * 0.07}s`, opacity: 0 }}
             onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = ev.urgent ? "rgba(255,107,26,0.5)" : "var(--ash-border)")}
-          >
+            onMouseLeave={e => (e.currentTarget.style.borderColor = ev.urgent ? "rgba(255,107,26,0.5)" : "var(--ash-border)")}>
             <div className="text-center flex-shrink-0 w-12">
               <div className="text-xs uppercase" style={{ color: "var(--ash-text-dim)" }}>{ev.date.split(" ")[1]}</div>
               <div className="font-display font-bold text-xl text-white leading-none">{ev.date.split(" ")[0]}</div>
@@ -355,9 +508,7 @@ function CalendarSection() {
             <div className="w-px h-10 flex-shrink-0" style={{ backgroundColor: "var(--ash-border)" }} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                {ev.urgent && (
-                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse-orange" style={{ backgroundColor: "#fb923c" }} />
-                )}
+                {ev.urgent && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse-orange" style={{ backgroundColor: "#fb923c" }} />}
                 <span className="text-sm font-medium text-white">{ev.title}</span>
               </div>
               <div className="flex items-center gap-3 mt-1">
@@ -367,19 +518,10 @@ function CalendarSection() {
             </div>
             <div className="text-right flex-shrink-0">
               <div className="text-xs font-mono-ash text-white">{ev.participants}/{ev.max}</div>
-              <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>игроков</div>
-              <button
-                className="mt-1 text-xs px-2 py-0.5 rounded transition-all"
+              <button className="mt-1 text-xs px-2 py-0.5 rounded transition-all"
                 style={{ border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = "var(--ash-orange)";
-                  e.currentTarget.style.color = "var(--ash-orange)";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = "var(--ash-border)";
-                  e.currentTarget.style.color = "var(--ash-text-dim)";
-                }}
-              >
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ash-orange)"; e.currentTarget.style.color = "var(--ash-orange)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text-dim)"; }}>
                 Участвовать
               </button>
             </div>
@@ -390,43 +532,58 @@ function CalendarSection() {
   );
 }
 
-function ChatSection() {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState(MESSAGES);
+// ─── Chat Section ─────────────────────────────────────────────────────────────
 
-  const send = () => {
-    if (!input.trim()) return;
-    setMessages(prev => [
-      ...prev,
-      { id: prev.length + 1, user: "Вы", avatar: "ВЫ", text: input.trim(), time: "сейчас", role: "Участник" },
-    ]);
-    setInput("");
+function ChatSection({ user }: { user: User | null }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getMessages();
+    const interval = setInterval(getMessages, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getMessages = async () => {
+    const msgs = await api.getMessages().catch(() => []);
+    setMessages(msgs);
+    setLoading(false);
   };
+
+  const send = async () => {
+    if (!input.trim()) return;
+    const text = input.trim();
+    setInput("");
+    const msg = await api.sendMessage(text).catch(() => null);
+    if (msg) setMessages(prev => [...prev, msg]);
+  };
+
+  const onlineCount = 1;
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 200px)", minHeight: "500px" }}>
       <div className="flex items-center gap-3 mb-4 pb-4" style={{ borderBottom: "1px solid var(--ash-border)" }}>
         <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-orange" />
-        <span className="text-xs uppercase font-display tracking-wider" style={{ color: "var(--ash-text-dim)" }}>Общий чат</span>
-        <span className="text-xs font-mono-ash ml-auto" style={{ color: "var(--ash-text-dim)" }}>
-          {MEMBERS.filter(m => m.status !== "offline").length} онлайн
-        </span>
+        <span className="text-xs uppercase font-display tracking-wider" style={{ color: "var(--ash-text-dim)" }}>Общий чат клана</span>
+        <span className="text-xs font-mono-ash ml-auto" style={{ color: "var(--ash-text-dim)" }}>{onlineCount} онлайн</span>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+        {loading && <div className="text-center py-8 text-sm" style={{ color: "var(--ash-text-dim)" }}>Загрузка...</div>}
+        {!loading && messages.length === 0 && (
+          <div className="text-center py-8 text-sm" style={{ color: "var(--ash-text-dim)" }}>Начните общение с кланом!</div>
+        )}
         {messages.map((msg, i) => (
           <div key={msg.id} className="flex items-start gap-3 animate-fade-in" style={{ animationDelay: `${i * 0.03}s`, opacity: 0 }}>
-            <MemberAvatar initials={msg.avatar} size="sm" />
+            <MemberAvatar initials={msg.user_nick.slice(0, 2).toUpperCase()} size="sm" />
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-white">{msg.user}</span>
-                <span
-                  className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}
-                >
-                  {msg.role}
+                <span className={`text-sm font-medium ${msg.user_nick === user?.steam_nick ? "text-orange-400" : "text-white"}`}>{msg.user_nick}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>{msg.role}</span>
+                <span className="text-xs font-mono-ash ml-auto" style={{ color: "var(--ash-text-dim)" }}>
+                  {new Date(msg.created_at).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
                 </span>
-                <span className="text-xs font-mono-ash ml-auto" style={{ color: "var(--ash-text-dim)" }}>{msg.time}</span>
               </div>
               <div className="text-sm leading-relaxed" style={{ color: "var(--ash-text)" }}>{msg.text}</div>
             </div>
@@ -436,26 +593,17 @@ function ChatSection() {
 
       <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--ash-border)" }}>
         <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
+          <input value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && send()}
-            placeholder="Написать в чат..."
+            placeholder={user ? "Написать в чат..." : "Войдите чтобы писать в чат"}
+            disabled={!user}
             className="flex-1 px-3 py-2.5 text-sm text-white rounded-md focus:outline-none transition-colors"
-            style={{
-              backgroundColor: "var(--ash-surface-3)",
-              border: "1px solid var(--ash-border)",
-            }}
+            style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
             onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
-            onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")}
-          />
-          <button
-            onClick={send}
+            onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+          <button onClick={send} disabled={!user}
             className="px-4 py-2.5 rounded-md text-black transition-colors"
-            style={{ backgroundColor: "var(--ash-orange)" }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
-            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-          >
+            style={{ backgroundColor: "var(--ash-orange)", opacity: user ? 1 : 0.4 }}>
             <Icon name="Send" size={15} />
           </button>
         </div>
@@ -464,55 +612,46 @@ function ChatSection() {
   );
 }
 
-function RatingsSection() {
-  const [sortBy, setSortBy] = useState<"kda" | "wins" | "winrate">("kda");
+// ─── Ratings Section ─────────────────────────────────────────────────────────
 
-  const sorted = [...TOP_PLAYERS].sort((a, b) => b[sortBy] - a[sortBy]);
+function RatingsSection({ members }: { members: Member[] }) {
+  const [sortBy, setSortBy] = useState<"kda" | "wins" | "winrate">("kda");
+  const sorted = [...members].sort((a, b) => Number(b[sortBy]) - Number(a[sortBy]));
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs uppercase font-display tracking-wider mr-2" style={{ color: "var(--ash-text-dim)" }}>Сортировка:</span>
         {(["kda", "wins", "winrate"] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setSortBy(s)}
+          <button key={s} onClick={() => setSortBy(s)}
             className="px-3 py-1 rounded text-xs font-display uppercase tracking-wider transition-all"
-            style={
-              sortBy === s
-                ? { backgroundColor: "var(--ash-orange)", color: "#000" }
-                : { backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }
-            }
-          >
+            style={sortBy === s
+              ? { backgroundColor: "var(--ash-orange)", color: "#000" }
+              : { backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}>
             {s === "kda" ? "KDA" : s === "wins" ? "Победы" : "Winrate"}
           </button>
         ))}
       </div>
 
+      {sorted.length === 0 && (
+        <div className="text-center py-10 text-sm" style={{ color: "var(--ash-text-dim)" }}>
+          Пока нет участников для рейтинга
+        </div>
+      )}
+
       <div className="space-y-2">
         {sorted.map((p, i) => {
           const rankColor = i === 0 ? "#facc15" : i === 1 ? "#9ca3af" : i === 2 ? "#cd7c3a" : "var(--ash-text-dim)";
-          const rankLabel = i === 0 ? "1" : i === 1 ? "2" : i === 2 ? "3" : `${i + 1}`;
           return (
-            <div
-              key={p.name}
-              className="flex items-center gap-4 p-4 rounded-md cursor-pointer transition-all animate-fade-in"
-              style={{
-                backgroundColor: "var(--ash-surface-2)",
-                border: `1px solid ${i === 0 ? "rgba(250,204,21,0.3)" : "var(--ash-border)"}`,
-                animationDelay: `${i * 0.05}s`,
-                opacity: 0,
-              }}
+            <div key={p.id} className="flex items-center gap-4 p-4 rounded-md cursor-pointer transition-all animate-fade-in"
+              style={{ backgroundColor: "var(--ash-surface-2)", border: `1px solid ${i === 0 ? "rgba(250,204,21,0.3)" : "var(--ash-border)"}`, animationDelay: `${i * 0.05}s`, opacity: 0 }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = i === 0 ? "rgba(250,204,21,0.3)" : "var(--ash-border)")}
-            >
-              <div className="font-display font-bold text-base w-6 flex-shrink-0 text-center" style={{ color: rankColor }}>
-                {rankLabel}
-              </div>
-              <MemberAvatar initials={p.name.slice(0, 2).toUpperCase()} size="sm" />
+              onMouseLeave={e => (e.currentTarget.style.borderColor = i === 0 ? "rgba(250,204,21,0.3)" : "var(--ash-border)")}>
+              <div className="font-display font-bold text-base w-6 flex-shrink-0 text-center" style={{ color: rankColor }}>{i + 1}</div>
+              <MemberAvatar initials={p.steam_nick.slice(0, 2).toUpperCase()} size="sm" />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-white">{p.name}</div>
-                <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{p.game}</div>
+                <div className="text-sm font-medium text-white">{p.steam_nick}</div>
+                <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{p.games?.join(", ") || "—"}</div>
               </div>
               <div className="grid grid-cols-3 gap-4 text-right">
                 {[
@@ -521,60 +660,20 @@ function RatingsSection() {
                   { key: "winrate", label: "WR%", val: `${p.winrate}%` },
                 ].map(col => (
                   <div key={col.key}>
-                    <div
-                      className="font-mono-ash text-sm font-medium"
-                      style={{ color: sortBy === col.key ? "var(--ash-orange)" : "white" }}
-                    >
-                      {col.val}
-                    </div>
+                    <div className="font-mono-ash text-sm font-medium" style={{ color: sortBy === col.key ? "var(--ash-orange)" : "white" }}>{col.val}</div>
                     <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{col.label}</div>
                   </div>
                 ))}
-              </div>
-              <div
-                className="text-xs font-mono-ash ml-2 w-10 text-right"
-                style={{ color: p.delta.startsWith("+") ? "#4ade80" : "#f87171" }}
-              >
-                {p.delta}
               </div>
             </div>
           );
         })}
       </div>
-
-      <div
-        className="p-4 mt-4 rounded-md"
-        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px dashed var(--ash-border)" }}
-      >
-        <div className="flex items-center gap-3">
-          <Icon name="Gamepad2" size={16} style={{ color: "#38bdf8" }} />
-          <div>
-            <div className="text-sm text-white font-medium">Steam-синхронизация</div>
-            <div className="text-xs mt-0.5" style={{ color: "var(--ash-text-dim)" }}>
-              Подключите Steam для автообновления статистики игроков клана
-            </div>
-          </div>
-          <button
-            className="ml-auto px-3 py-1.5 rounded text-xs font-display transition-all flex-shrink-0"
-            style={{ border: "1px solid #0369a1", color: "#38bdf8" }}
-            onMouseEnter={e => {
-              e.currentTarget.style.backgroundColor = "#0369a1";
-              e.currentTarget.style.color = "white";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.backgroundColor = "";
-              e.currentTarget.style.color = "#38bdf8";
-            }}
-          >
-            Подключить
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main App ─────────────────────────────────────────────────────────────────
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "feed", label: "Лента", icon: "Activity" },
@@ -586,62 +685,121 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState<Tab>("feed");
+  const [user, setUser] = useState<User | null>(null);
+  const [clan, setClan] = useState<Clan | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showRegister, setShowRegister] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [showCreateClan, setShowCreateClan] = useState(false);
+
+  const load = useCallback(async () => {
+    const me = await api.getMe();
+    setUser(me);
+    if (me?.clan_id) {
+      const [c, m, a] = await Promise.all([api.getClan(), api.getMembers(), api.getActivity()]);
+      setClan(c);
+      setMembers(m);
+      setActivity(a);
+    } else {
+      setClan(null); setMembers([]); setActivity([]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const refreshInvites = async () => {
+    if (!user) return;
+    const inv = await api.getMyInvites().catch(() => []);
+    setInvites(inv);
+  };
+
+  const handleAccept = async (invite_id: number) => {
+    await api.acceptInvite(invite_id);
+    setInvites(prev => prev.filter(i => i.id !== invite_id));
+    await load();
+  };
+
+  const handleDecline = async (invite_id: number) => {
+    await api.declineInvite(invite_id);
+    setInvites(prev => prev.filter(i => i.id !== invite_id));
+  };
+
+  const onlineCount = members.filter(m => m.status !== "offline").length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--ash-surface)" }}>
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 rounded mx-auto flex items-center justify-center" style={{ backgroundColor: "var(--ash-orange)" }}>
+            <span className="font-display font-black text-black text-lg">A</span>
+          </div>
+          <div className="text-sm animate-pulse-orange" style={{ color: "var(--ash-text-dim)" }}>Загрузка ASH...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: "var(--ash-surface)", color: "var(--ash-text)" }}>
+      {showRegister && <RegisterModal onDone={u => { setUser(u); setShowRegister(false); load(); }} />}
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
+      {showCreateClan && (
+        <CreateClanModal onClose={() => setShowCreateClan(false)} onCreated={() => { setShowCreateClan(false); load(); }} />
+      )}
+
       {/* Header */}
-      <header
-        className="sticky top-0 z-50"
-        style={{ backgroundColor: "var(--ash-surface)", borderBottom: "1px solid var(--ash-border)" }}
-      >
+      <header className="sticky top-0 z-50" style={{ backgroundColor: "var(--ash-surface)", borderBottom: "1px solid var(--ash-border)" }}>
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-4">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-7 h-7 rounded flex items-center justify-center"
-              style={{ backgroundColor: "var(--ash-orange)" }}
-            >
+            <div className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: "var(--ash-orange)" }}>
               <span className="font-display font-black text-xs text-black tracking-wider">A</span>
             </div>
             <span className="font-display font-bold text-sm tracking-widest text-white">ASH</span>
-            <span className="text-xs font-mono-ash ml-1" style={{ color: "var(--ash-text-dim)" }}>{CLAN.tag}</span>
+            {clan && <span className="text-xs font-mono-ash ml-1" style={{ color: "var(--ash-text-dim)" }}>{clan.tag}</span>}
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
-            <span className="text-xs hidden sm:block" style={{ color: "var(--ash-text-dim)" }}>{CLAN.name}</span>
-            <div className="w-px h-4" style={{ backgroundColor: "var(--ash-border)" }} />
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <span style={{ color: "var(--ash-text-dim)" }}>{MEMBERS.filter(m => m.status !== "offline").length} онлайн</span>
-            </div>
-            <button
-              className="w-8 h-8 rounded flex items-center justify-center ml-1 transition-colors"
-              style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--ash-border)")}
-            >
-              <Icon name="Bell" size={14} style={{ color: "var(--ash-text-dim)" }} />
-            </button>
+            {clan && <span className="text-xs hidden sm:block" style={{ color: "var(--ash-text-dim)" }}>{clan.name}</span>}
+            {clan && <div className="w-px h-4" style={{ backgroundColor: "var(--ash-border)" }} />}
+            {onlineCount > 0 && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                <span style={{ color: "var(--ash-text-dim)" }}>{onlineCount} онлайн</span>
+              </div>
+            )}
+            {user ? (
+              <div className="flex items-center gap-2 ml-1">
+                <div className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>
+                  {user.steam_nick}
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowRegister(true)}
+                className="px-3 py-1.5 rounded text-xs font-display font-medium text-black"
+                style={{ backgroundColor: "var(--ash-orange)" }}>
+                Подключить Steam
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Nav tabs */}
-      <nav
-        className="sticky top-14 z-40 overflow-x-auto"
-        style={{ backgroundColor: "var(--ash-surface-2)", borderBottom: "1px solid var(--ash-border)" }}
-      >
+      {/* Nav */}
+      <nav className="sticky top-14 z-40 overflow-x-auto"
+        style={{ backgroundColor: "var(--ash-surface-2)", borderBottom: "1px solid var(--ash-border)" }}>
         <div className="max-w-3xl mx-auto px-4 flex gap-1">
           {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className="flex items-center gap-2 px-4 py-3 text-xs font-display uppercase tracking-wider transition-all whitespace-nowrap"
               style={{
                 borderBottom: `2px solid ${activeTab === tab.id ? "var(--ash-orange)" : "transparent"}`,
                 color: activeTab === tab.id ? "var(--ash-orange)" : "var(--ash-text-dim)",
                 marginBottom: "-1px",
-              }}
-            >
+              }}>
               <Icon name={tab.icon} size={13} />
               {tab.label}
             </button>
@@ -651,11 +809,28 @@ export default function Index() {
 
       {/* Content */}
       <main className="max-w-3xl mx-auto px-4 py-6">
-        {activeTab === "feed" && <FeedSection />}
-        {activeTab === "clan" && <ClanSection />}
-        {activeTab === "calendar" && <CalendarSection />}
-        {activeTab === "chat" && <ChatSection />}
-        {activeTab === "ratings" && <RatingsSection />}
+        {/* No clan screen for non-tab pages */}
+        {user && !clan && activeTab !== "calendar" ? (
+          <NoClanScreen user={user} invites={invites} onCreateClan={() => setShowCreateClan(true)}
+            onAccept={handleAccept} onDecline={handleDecline} refreshInvites={refreshInvites} />
+        ) : !user && activeTab !== "calendar" && activeTab !== "feed" ? (
+          <div className="text-center py-16 space-y-4">
+            <div className="text-sm" style={{ color: "var(--ash-text-dim)" }}>Войдите чтобы получить доступ к этому разделу</div>
+            <button onClick={() => setShowRegister(true)}
+              className="px-5 py-2.5 rounded-md font-display font-medium text-black"
+              style={{ backgroundColor: "var(--ash-orange)" }}>
+              Подключить Steam
+            </button>
+          </div>
+        ) : (
+          <>
+            {activeTab === "feed" && <FeedSection clan={clan} activity={activity} />}
+            {activeTab === "clan" && <ClanSection clan={clan} members={members} user={user} onInviteClick={() => setShowInvite(true)} />}
+            {activeTab === "calendar" && <CalendarSection />}
+            {activeTab === "chat" && <ChatSection user={user} />}
+            {activeTab === "ratings" && <RatingsSection members={members} />}
+          </>
+        )}
       </main>
     </div>
   );

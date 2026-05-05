@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Get clan without token",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401
+    }
+  ]
+}

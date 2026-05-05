@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Root without token returns 401",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401
+    }
+  ]
+}
