@@ -77,6 +77,14 @@
 @layer base {
   * {
     @apply border-border;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    min-height: 36px;
   }
 
   html {

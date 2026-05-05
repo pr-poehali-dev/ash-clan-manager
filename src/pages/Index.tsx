@@ -73,8 +73,8 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
-      <div className="w-full max-w-md p-6 rounded-lg animate-fade-in"
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+      <div className="w-full max-w-md p-4 sm:p-6 rounded-t-xl sm:rounded-lg animate-fade-in"
         style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
         <div className="flex items-center justify-between mb-5">
           <div className="font-display font-bold text-white">Пригласить игрока</div>
@@ -90,7 +90,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
 
         {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
 
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
           {loading && <div className="text-xs text-center py-4" style={{ color: "var(--ash-text-dim)" }}>Поиск...</div>}
           {!loading && query.length >= 2 && results.length === 0 && (
             <div className="text-xs text-center py-4" style={{ color: "var(--ash-text-dim)" }}>Игроки не найдены</div>
@@ -148,8 +148,8 @@ function CreateClanModal({ onClose, onCreated }: { onClose: () => void; onCreate
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
-      <div className="w-full max-w-sm p-6 rounded-lg animate-fade-in"
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+      <div className="w-full max-w-sm p-4 sm:p-6 rounded-t-xl sm:rounded-lg animate-fade-in"
         style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
         <div className="flex items-center justify-between mb-5">
           <div className="font-display font-bold text-white">Создать клан</div>
@@ -535,9 +535,9 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
-      <div className="w-full max-w-sm p-6 rounded-lg animate-fade-in overflow-y-auto max-h-screen"
-        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+      <div className="w-full max-w-sm p-4 sm:p-6 rounded-t-xl sm:rounded-lg animate-fade-in overflow-y-auto"
+        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)", maxHeight: "90dvh" }}>
         <div className="flex items-center justify-between mb-5">
           <div className="font-display font-bold text-white">Новое событие</div>
           <button onClick={onClose}><Icon name="X" size={16} style={{ color: "var(--ash-text-dim)" }} /></button>
@@ -572,7 +572,7 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <div>
               <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>Дата</label>
               <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
@@ -869,8 +869,8 @@ function ChatSection({
           <button
             onClick={send}
             disabled={!user || sending || !input.trim()}
-            className="px-4 py-2.5 rounded-md text-black transition-all"
-            style={{ backgroundColor: "var(--ash-orange)", opacity: user && !sending && input.trim() ? 1 : 0.4 }}
+            className="btn-lava px-4 py-2.5 flex-shrink-0 flex items-center justify-center"
+            style={{ opacity: user && !sending && input.trim() ? 1 : 0.4 }}
           >
             <Icon name={sending ? "RefreshCw" : "Send"} size={15} />
           </button>
@@ -1196,7 +1196,7 @@ export default function Index() {
       </nav>
 
       {/* Content */}
-      <main className="max-w-3xl mx-auto px-4 py-6">
+      <main className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* No clan screen for non-tab pages */}
         {user && !clan && activeTab !== "calendar" ? (
           <NoClanScreen user={user} invites={invites} onCreateClan={() => setShowCreateClan(true)}

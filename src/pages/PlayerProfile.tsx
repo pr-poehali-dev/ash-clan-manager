@@ -101,7 +101,7 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
       style={{ backgroundColor: "var(--metal-void)" }}
     >
       {/* Hero banner — лава */}
-      <div className="relative h-48 flex-shrink-0 overflow-hidden">
+      <div className="relative h-32 sm:h-40 md:h-48 flex-shrink-0 overflow-hidden">
         <img
           src={LAVA_IMG}
           alt="bg"
@@ -134,13 +134,13 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
         </button>
 
         {/* Аватар + имя */}
-        <div className={`absolute bottom-0 left-0 right-0 px-5 pb-4 flex items-end gap-4 transition-all duration-500 ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        <div className={`absolute bottom-0 left-0 right-0 px-3 sm:px-5 pb-3 sm:pb-4 flex items-end gap-2 sm:gap-4 transition-all duration-500 ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <div className="relative flex-shrink-0">
             {member.steam_avatar ? (
               <img
                 src={member.steam_avatar}
                 alt={member.steam_nick}
-                className="w-20 h-20 rounded-md object-cover"
+                className="w-14 h-14 sm:w-20 sm:h-20 rounded-md object-cover"
                 style={{
                   border: `2px solid ${tier.color}`,
                   boxShadow: `0 0 20px ${tier.glow}, 0 4px 16px rgba(0,0,0,0.8)`,
@@ -148,7 +148,7 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
               />
             ) : (
               <div
-                className="w-20 h-20 rounded-md flex items-center justify-center font-display font-black text-2xl"
+                className="w-14 h-14 sm:w-20 sm:h-20 rounded-md flex items-center justify-center font-display font-black text-xl sm:text-2xl"
                 style={{
                   backgroundColor: "var(--metal-dark)",
                   border: `2px solid ${tier.color}`,
@@ -161,7 +161,7 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
             )}
             {/* Tier badge */}
             <div
-              className="absolute -bottom-2 -right-2 w-7 h-7 rounded-sm flex items-center justify-center font-display font-black text-sm"
+              className="absolute -bottom-2 -right-2 w-6 h-6 sm:w-7 sm:h-7 rounded-sm flex items-center justify-center font-display font-black text-xs sm:text-sm"
               style={{ backgroundColor: tier.color, color: "#000", boxShadow: `0 0 10px ${tier.glow}` }}
             >
               {tier.label}
@@ -169,9 +169,9 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
           </div>
 
           <div className="flex-1 min-w-0 pb-1">
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <h1
-                className="font-display font-black text-xl text-white tracking-wide"
+                className="font-display font-black text-base sm:text-xl text-white tracking-wide break-words"
                 style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}
               >
                 {member.steam_nick}
@@ -184,20 +184,15 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 mt-1 flex-wrap">
               {member.rank && (
-                <span className="text-sm font-mono-ash" style={{ color: tier.color }}>
+                <span className="text-xs sm:text-sm font-mono-ash" style={{ color: tier.color }}>
                   {member.rank}
                 </span>
               )}
               {clan && (
-                <span className="text-xs" style={{ color: "var(--metal-dim)" }}>
+                <span className="text-xs hidden sm:inline" style={{ color: "var(--metal-dim)" }}>
                   · {clan.name}
-                </span>
-              )}
-              {member.steam_id && (
-                <span className="text-xs font-mono-ash" style={{ color: "var(--metal-dim)" }}>
-                  · {member.steam_id.slice(-8)}
                 </span>
               )}
             </div>
@@ -218,15 +213,15 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
         ].map((s, i) => (
           <div
             key={i}
-            className="flex-1 flex flex-col items-center justify-center py-3 gap-0.5"
+            className="flex-1 flex flex-col items-center justify-center py-2.5 sm:py-3 gap-0.5"
             style={{ borderRight: i < 3 ? "1px solid var(--metal-edge)" : "none" }}
           >
-            <Icon name={s.icon} size={13} style={{ color: "var(--lava-dim)" }} />
+            <Icon name={s.icon} size={12} style={{ color: "var(--lava-dim)" }} />
             <span
               className="font-mono-ash font-bold text-sm"
               style={{ color: "var(--metal-text)" }}
             >{s.value}</span>
-            <span className="text-xs font-display uppercase tracking-wide" style={{ color: "var(--metal-dim)" }}>
+            <span className="text-[10px] sm:text-xs font-display uppercase tracking-wide" style={{ color: "var(--metal-dim)" }}>
               {s.label}
             </span>
           </div>
@@ -242,7 +237,7 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className="px-5 py-2.5 text-xs font-display uppercase tracking-wider transition-all"
+            className="flex-1 px-2 sm:px-5 py-2.5 text-xs font-display uppercase tracking-wider transition-all"
             style={{
               color: activeTab === t ? "var(--lava-bright)" : "var(--metal-dim)",
               borderBottom: `2px solid ${activeTab === t ? "var(--lava-bright)" : "transparent"}`,
@@ -257,7 +252,7 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
+        <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-5 space-y-3 sm:space-y-4">
 
           {/* ── STATS ── */}
           {activeTab === "stats" && (
@@ -277,9 +272,7 @@ export default function PlayerProfile({ member, currentUser, clan, onBack }: Pro
               </div>
 
               {/* Детальная статистика */}
-              <div
-                className="grid grid-cols-2 gap-3"
-              >
+              <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3">
                 {[
                   { label: "Avg убийств/игру", value: String(12 + (seed % 20)), icon: "Crosshair" },
                   { label: "Headshot %", value: `${35 + (seed % 40)}%`, icon: "Target" },

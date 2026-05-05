@@ -110,7 +110,7 @@ export default function SteamConnect({ onSuccess, onBack }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-md mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto px-4 py-5 sm:py-8">
 
           {/* Choose mode */}
           {mode === "choose" && (
@@ -179,9 +179,9 @@ export default function SteamConnect({ onSuccess, onBack }: Props) {
               <div className="flex justify-center">
                 <div className="p-4 rounded-xl" style={{ backgroundColor: "white" }}>
                   {qrValue ? (
-                    <img src={qrValue} alt="Steam QR" width={200} height={200} className="block" />
+                    <img src={qrValue} alt="Steam QR" width={200} height={200} className="block w-40 h-40 sm:w-[200px] sm:h-[200px]" />
                   ) : (
-                    <div className="w-[200px] h-[200px] flex items-center justify-center">
+                    <div className="w-40 h-40 sm:w-[200px] sm:h-[200px] flex items-center justify-center">
                       <div className="text-sm text-gray-400">Загрузка...</div>
                     </div>
                   )}
@@ -224,7 +224,7 @@ export default function SteamConnect({ onSuccess, onBack }: Props) {
                 <div className="text-xs font-display uppercase tracking-wider" style={{ color: "var(--ash-orange)" }}>Как найти Steam ID</div>
                 <div className="text-xs space-y-1" style={{ color: "var(--ash-text-dim)" }}>
                   <div>1. Откройте Steam → ваш профиль</div>
-                  <div>2. В браузере скопируйте ссылку: <code className="px-1 rounded" style={{ backgroundColor: "var(--ash-surface-3)" }}>steamcommunity.com/profiles/<span style={{ color: "var(--ash-orange)" }}>76561198...</span></code></div>
+                  <div>2. В браузере скопируйте ссылку: <code className="px-1 rounded break-all" style={{ backgroundColor: "var(--ash-surface-3)" }}>steamcommunity.com/profiles/<span style={{ color: "var(--ash-orange)" }}>76561198...</span></code></div>
                   <div>3. Или найдите ID: Настройки → Аккаунт</div>
                 </div>
               </div>

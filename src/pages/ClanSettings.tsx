@@ -218,9 +218,30 @@ export default function ClanSettings({ clan, members, user, onBack, onUpdated, o
         )}
       </div>
 
+      {/* Mobile bottom nav */}
+      <div className="flex md:hidden flex-shrink-0 overflow-x-auto"
+        style={{ borderBottom: "1px solid var(--ash-border)", backgroundColor: "var(--ash-surface-2)" }}>
+        {NAV.map(n => (
+          <button
+            key={n.id}
+            onClick={() => setActiveSection(n.id)}
+            className="flex items-center gap-1.5 px-3 py-3 whitespace-nowrap flex-shrink-0 text-xs font-display uppercase tracking-wide transition-all"
+            style={{
+              color: activeSection === n.id ? "var(--lava-bright)" :
+                n.id === "danger" ? "#ef4444" : "var(--metal-dim)",
+              borderBottom: activeSection === n.id ? "2px solid var(--lava-bright)" : "2px solid transparent",
+              marginBottom: "-1px",
+            }}
+          >
+            <Icon name={n.icon} size={13} />
+            {n.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar nav */}
-        <div className="w-48 flex-shrink-0 flex flex-col py-4 gap-1 px-2 overflow-y-auto"
+        {/* Sidebar nav — desktop only */}
+        <div className="hidden md:flex w-48 flex-shrink-0 flex-col py-4 gap-1 px-2 overflow-y-auto"
           style={{ borderRight: "1px solid var(--ash-border)", backgroundColor: "var(--ash-surface-2)" }}>
           {NAV.map(n => (
             <button
@@ -242,7 +263,7 @@ export default function ClanSettings({ clan, members, user, onBack, onUpdated, o
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5">
 
             {error && (
               <div className="px-4 py-3 rounded-md text-sm text-red-400 animate-fade-in"
@@ -255,7 +276,7 @@ export default function ClanSettings({ clan, members, user, onBack, onUpdated, o
             {activeSection === "profile" && (
               <>
                 <Section title="Основная информация">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <Field label="Название клана">
                       <Input value={form.name} onChange={f("name")} placeholder="SHADOW WOLVES" maxLength={128} />
                     </Field>
@@ -284,7 +305,7 @@ export default function ClanSettings({ clan, members, user, onBack, onUpdated, o
                 </Section>
 
                 <Section title="Игровые параметры">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <Field label="Основная дисциплина">
                       <select
                         value={form.discipline}
