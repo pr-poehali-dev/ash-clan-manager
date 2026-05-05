@@ -5,15 +5,15 @@ const URLS = {
   invites: "https://functions.poehali.dev/6557e11c-7bbf-429e-94c2-33182e7c6983",
 };
 
-function getToken(): string {
+export function getToken(): string {
   return localStorage.getItem("ash_token") || "";
 }
 
-function saveToken(token: string) {
+export function saveToken(token: string) {
   localStorage.setItem("ash_token", token);
 }
 
-function clearToken() {
+export function clearToken() {
   localStorage.removeItem("ash_token");
 }
 
@@ -35,7 +35,6 @@ async function req<T>(
   let data: unknown;
   try {
     const parsed = JSON.parse(text);
-    // body may be double-serialized string
     data = typeof parsed === "string" ? JSON.parse(parsed) : parsed;
   } catch {
     data = text;
@@ -54,11 +53,54 @@ export interface User {
   steam_id: string;
   steam_nick: string;
   steam_avatar: string | null;
+  steam_profile_url?: string;
+  steam_country?: string;
+  steam_games_count?: number;
   clan_id: number | null;
   role: string;
   clan_name?: string;
   clan_tag?: string;
   session_token?: string;
+}
+
+export interface SteamProfile {
+  steam_id: string;
+  steam_nick: string;
+  steam_avatar: string;
+  steam_profile_url: string;
+  steam_country: string;
+  games_count: number;
+}
+
+/** Получить URL для Steam OpenID редиректа */
+export async function getSteamLoginUrl(returnTo: string): Promise<string> {
+  const r = await req<{ openid_url: string }>(
+    "auth",
+    `/steam/login?return_to=${encodeURIComponent(returnTo)}`
+  );
+  return r.openid_url;
+}
+
+/** Авторизация по числовому Steam ID (ручной ввод) */
+export async function steamManualAuth(steamId: string): Promise<User> {
+  const user = await req<User>("auth", "/steam/manual", {
+    method: "POST",
+    body: JSON.stringify({ steam_id: steamId }),
+  });
+  if (user.session_token) saveToken(user.session_token);
+  return user;
+}
+
+/** Предпросмотр профиля Steam по ID */
+export async function previewSteamProfile(steamId: string): Promise<SteamProfile> {
+  return req<SteamProfile>("auth", `/steam/profile?steam_id=${encodeURIComponent(steamId)}`);
+}
+
+/** Завершить Steam OpenID callback (вызывается после редиректа) */
+export async function completeSteamCallback(queryString: string): Promise<User> {
+  const user = await req<User>("auth", `/steam/callback?${queryString}`);
+  if (user.session_token) saveToken(user.session_token);
+  return user;
 }
 
 export async function register(steam_id: string, steam_nick: string, steam_avatar?: string): Promise<User> {
@@ -79,8 +121,6 @@ export async function getMe(): Promise<User | null> {
     return null;
   }
 }
-
-export { saveToken, clearToken, getToken };
 
 // ─── Clan ────────────────────────────────────────────────────────────────────
 
@@ -140,6 +180,55 @@ export async function getMembers(): Promise<Member[]> {
 
 export async function getActivity(): Promise<ActivityItem[]> {
   return req<ActivityItem[]>("clan", "/activity");
+}
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+
+export interface ClanEvent {
+  id: number;
+  title: string;
+  type: string;
+  description: string;
+  game: string;
+  event_date: string;
+  max_participants: number;
+  participants_count: number;
+  user_joined: boolean;
+  created_at: string;
+}
+
+export interface CreateEventPayload {
+  title: string;
+  type: string;
+  description?: string;
+  game?: string;
+  event_date: string;
+  max_participants?: number;
+}
+
+export async function getEvents(): Promise<ClanEvent[]> {
+  return req<ClanEvent[]>("clan", "/events");
+}
+
+export async function createEvent(payload: CreateEventPayload): Promise<ClanEvent> {
+  return req<ClanEvent>("clan", "/events", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function joinEvent(event_id: number): Promise<void> {
+  await req("clan", "/events/join", {
+    method: "POST",
+    body: JSON.stringify({ event_id }),
+  });
+}
+
+export async function leaveEvent(event_id: number): Promise<void> {
+  await req("clan", "/events/leave", {
+    method: "POST",
+    body: JSON.stringify({ event_id }),
+  });
 }
 
 // ─── Chat ────────────────────────────────────────────────────────────────────

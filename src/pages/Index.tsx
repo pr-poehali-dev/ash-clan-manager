@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import * as api from "@/lib/api";
-import type { User, Clan, Member, ActivityItem, ChatMessage, SearchUser, Invite } from "@/lib/api";
+import type { User, Clan, Member, ActivityItem, ChatMessage, SearchUser, Invite, ClanEvent } from "@/lib/api";
+import SteamConnect from "./SteamConnect";
 
 type Tab = "feed" | "clan" | "calendar" | "chat" | "ratings";
 
@@ -39,64 +40,6 @@ function timeAgo(dateStr: string): string {
   if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
   return `${Math.floor(diff / 86400)} д назад`;
-}
-
-// ─── Auth / Register Modal ────────────────────────────────────────────────────
-
-function RegisterModal({ onDone }: { onDone: (user: User) => void }) {
-  const [nick, setNick] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async () => {
-    if (!nick.trim() || nick.trim().length < 2) { setError("Ник должен быть не менее 2 символов"); return; }
-    setLoading(true); setError("");
-    const steamId = `manual_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const user = await api.register(steamId, nick.trim()).catch(e => { setError(e.message); return null; });
-    setLoading(false);
-    if (user) onDone(user);
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
-      <div className="w-full max-w-sm p-6 rounded-lg animate-fade-in"
-        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--ash-orange)" }}>
-            <span className="font-display font-black text-sm text-black">A</span>
-          </div>
-          <div>
-            <div className="font-display font-bold text-white">Добро пожаловать в ASH</div>
-            <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>Введите ваш игровой ник для регистрации</div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>
-              Игровой ник (Steam)
-            </label>
-            <input value={nick} onChange={e => setNick(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmit()}
-              placeholder="Ваш Steam-ник..."
-              className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none transition-colors"
-              style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
-              onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
-              onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
-          </div>
-          {error && <div className="text-xs text-red-400">{error}</div>}
-          <button onClick={handleSubmit} disabled={loading}
-            className="w-full py-2.5 rounded-md font-display font-medium text-black transition-opacity"
-            style={{ backgroundColor: "var(--ash-orange)", opacity: loading ? 0.6 : 1 }}>
-            {loading ? "Подключение..." : "Войти / Зарегистрироваться"}
-          </button>
-        </div>
-
-        <div className="mt-4 text-xs text-center" style={{ color: "var(--ash-text-dim)" }}>
-          После входа вы сможете создать клан или принять приглашение
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── Invite Modal ─────────────────────────────────────────────────────────────
@@ -472,61 +415,228 @@ function ClanSection({ clan, members, user, onInviteClick }: {
   );
 }
 
-// ─── Calendar Section ─────────────────────────────────────────────────────────
+// ─── Create Event Modal ───────────────────────────────────────────────────────
 
-const MOCK_EVENTS = [
-  { id: 1, date: "08 МАЯ", day: "Чт", title: "Ночной рейд CS2", type: "Клановый матч", participants: 8, max: 10, time: "22:00", urgent: true },
-  { id: 2, date: "10 МАЯ", day: "Сб", title: "Турнир «Пепел»", type: "Турнир", participants: 24, max: 24, time: "18:00", urgent: false },
-  { id: 3, date: "12 МАЯ", day: "Пн", title: "Тренировочный сбор", type: "Тренировка", participants: 5, max: 15, time: "20:00", urgent: false },
-];
+function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreated: (ev: ClanEvent) => void }) {
+  const [form, setForm] = useState({ title: "", type: "Клановый матч", game: "", date: "", time: "", max: "10" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const types = ["Клановый матч", "Турнир", "Тренировка", "Стрим", "Собрание"];
 
-function CalendarSection() {
+  const handle = async () => {
+    if (!form.title.trim() || !form.date || !form.time) { setError("Заполните название, дату и время"); return; }
+    setLoading(true); setError("");
+    const event_date = new Date(`${form.date}T${form.time}`).toISOString();
+    const ev = await api.createEvent({
+      title: form.title.trim(), type: form.type,
+      game: form.game.trim(), event_date,
+      max_participants: parseInt(form.max) || 10,
+    }).catch(e => { setError(e.message); return null; });
+    setLoading(false);
+    if (ev) onCreated(ev);
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-display font-semibold text-white">Май 2026</div>
-          <div className="text-xs mt-0.5" style={{ color: "var(--ash-text-dim)" }}>Предстоящие события</div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+      <div className="w-full max-w-sm p-6 rounded-lg animate-fade-in overflow-y-auto max-h-screen"
+        style={{ backgroundColor: "var(--ash-surface-2)", border: "1px solid var(--ash-border)" }}>
+        <div className="flex items-center justify-between mb-5">
+          <div className="font-display font-bold text-white">Новое событие</div>
+          <button onClick={onClose}><Icon name="X" size={16} style={{ color: "var(--ash-text-dim)" }} /></button>
         </div>
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-display font-medium text-black"
-          style={{ backgroundColor: "var(--ash-orange)" }}>
-          <Icon name="Plus" size={13} />
-          Событие
-        </button>
-      </div>
-      <div className="space-y-2">
-        {MOCK_EVENTS.map((ev, i) => (
-          <div key={ev.id} className="flex items-center gap-4 p-4 rounded-md cursor-pointer transition-all animate-fade-in"
-            style={{ backgroundColor: "var(--ash-surface-2)", border: `1px solid ${ev.urgent ? "rgba(255,107,26,0.5)" : "var(--ash-border)"}`, animationDelay: `${i * 0.07}s`, opacity: 0 }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = ev.urgent ? "rgba(255,107,26,0.5)" : "var(--ash-border)")}>
-            <div className="text-center flex-shrink-0 w-12">
-              <div className="text-xs uppercase" style={{ color: "var(--ash-text-dim)" }}>{ev.date.split(" ")[1]}</div>
-              <div className="font-display font-bold text-xl text-white leading-none">{ev.date.split(" ")[0]}</div>
-              <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{ev.day}</div>
+        <div className="space-y-3">
+          {[
+            { label: "Название", key: "title", placeholder: "Ночной рейд CS2" },
+            { label: "Игра (необязательно)", key: "game", placeholder: "CS2, Dota 2..." },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>{f.label}</label>
+              <input value={form[f.key as keyof typeof form]}
+                onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
+                className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none"
+                style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
+                onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+                onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
             </div>
-            <div className="w-px h-10 flex-shrink-0" style={{ backgroundColor: "var(--ash-border)" }} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                {ev.urgent && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse-orange" style={{ backgroundColor: "#fb923c" }} />}
-                <span className="text-sm font-medium text-white">{ev.title}</span>
-              </div>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{ev.type}</span>
-                <span className="text-xs font-mono-ash" style={{ color: "var(--ash-orange)" }}>{ev.time}</span>
-              </div>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <div className="text-xs font-mono-ash text-white">{ev.participants}/{ev.max}</div>
-              <button className="mt-1 text-xs px-2 py-0.5 rounded transition-all"
-                style={{ border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ash-orange)"; e.currentTarget.style.color = "var(--ash-orange)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text-dim)"; }}>
-                Участвовать
-              </button>
+          ))}
+          <div>
+            <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>Тип</label>
+            <div className="flex flex-wrap gap-2">
+              {types.map(t => (
+                <button key={t} onClick={() => setForm(p => ({ ...p, type: t }))}
+                  className="px-2.5 py-1 rounded text-xs font-display transition-all"
+                  style={form.type === t
+                    ? { backgroundColor: "var(--ash-orange)", color: "#000" }
+                    : { backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)" }}>
+                  {t}
+                </button>
+              ))}
             </div>
           </div>
-        ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>Дата</label>
+              <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none"
+                style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", colorScheme: "dark" }}
+                onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+                onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+            </div>
+            <div>
+              <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>Время</label>
+              <input type="time" value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
+                className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none"
+                style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)", colorScheme: "dark" }}
+                onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+                onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs uppercase font-display tracking-wider block mb-1" style={{ color: "var(--ash-text-dim)" }}>Макс. участников</label>
+            <input type="number" value={form.max} min="1" max="100"
+              onChange={e => setForm(p => ({ ...p, max: e.target.value }))}
+              className="w-full px-3 py-2.5 text-sm text-white rounded-md focus:outline-none font-mono-ash"
+              style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
+          </div>
+          {error && <div className="text-xs text-red-400">{error}</div>}
+          <button onClick={handle} disabled={loading}
+            className="w-full py-2.5 rounded-md font-display font-medium text-black"
+            style={{ backgroundColor: "var(--ash-orange)", opacity: loading ? 0.6 : 1 }}>
+            {loading ? "Создание..." : "Создать событие"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Calendar Section ─────────────────────────────────────────────────────────
+
+const DAYS_RU = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+const MONTHS_RU = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"];
+
+function formatEventDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return {
+    day: String(d.getDate()).padStart(2, "0"),
+    month: MONTHS_RU[d.getMonth()],
+    weekday: DAYS_RU[d.getDay()],
+    time: d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" }),
+  };
+}
+
+function CalendarSection({ user }: { user: User | null }) {
+  const [events, setEvents] = useState<ClanEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [joining, setJoining] = useState<number | null>(null);
+
+  const canManage = user?.role === "owner" || user?.role === "officer";
+
+  useEffect(() => {
+    if (!user?.clan_id) { setLoading(false); return; }
+    api.getEvents().then(evs => { setEvents(evs); setLoading(false); }).catch(() => setLoading(false));
+  }, [user]);
+
+  const handleJoin = async (ev: ClanEvent) => {
+    setJoining(ev.id);
+    if (ev.user_joined) {
+      await api.leaveEvent(ev.id).catch(() => null);
+      setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, user_joined: false, participants_count: e.participants_count - 1 } : e));
+    } else {
+      await api.joinEvent(ev.id).catch(() => null);
+      setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, user_joined: true, participants_count: e.participants_count + 1 } : e));
+    }
+    setJoining(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      {showCreate && (
+        <CreateEventModal
+          onClose={() => setShowCreate(false)}
+          onCreated={ev => { setEvents(prev => [...prev, { ...ev, participants_count: 0, user_joined: false }]); setShowCreate(false); }}
+        />
+      )}
+
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-display font-semibold text-white">Предстоящие события</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--ash-text-dim)" }}>
+            {loading ? "Загрузка..." : `${events.length} событий`}
+          </div>
+        </div>
+        {canManage && (
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-display font-medium text-black"
+            style={{ backgroundColor: "var(--ash-orange)" }}>
+            <Icon name="Plus" size={13} />
+            Событие
+          </button>
+        )}
+      </div>
+
+      {!user?.clan_id && (
+        <div className="text-center py-10 text-sm" style={{ color: "var(--ash-text-dim)" }}>
+          Вступите в клан, чтобы видеть события
+        </div>
+      )}
+
+      {user?.clan_id && !loading && events.length === 0 && (
+        <div className="text-center py-10 text-sm" style={{ color: "var(--ash-text-dim)" }}>
+          Событий пока нет. {canManage ? "Создайте первое!" : "Лидер клана сможет добавить события."}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {events.map((ev, i) => {
+          const fd = formatEventDate(ev.event_date);
+          const isFull = ev.participants_count >= ev.max_participants;
+          const urgent = new Date(ev.event_date).getTime() - Date.now() < 48 * 3600 * 1000;
+          return (
+            <div key={ev.id} className="flex items-center gap-4 p-4 rounded-md cursor-pointer transition-all animate-fade-in"
+              style={{ backgroundColor: "var(--ash-surface-2)", border: `1px solid ${urgent ? "rgba(255,107,26,0.4)" : "var(--ash-border)"}`, animationDelay: `${i * 0.07}s`, opacity: 0 }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = urgent ? "rgba(255,107,26,0.4)" : "var(--ash-border)")}>
+              <div className="text-center flex-shrink-0 w-12">
+                <div className="text-xs uppercase" style={{ color: "var(--ash-text-dim)" }}>{fd.month}</div>
+                <div className="font-display font-bold text-xl text-white leading-none">{fd.day}</div>
+                <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{fd.weekday}</div>
+              </div>
+              <div className="w-px h-10 flex-shrink-0" style={{ backgroundColor: "var(--ash-border)" }} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {urgent && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse-orange" style={{ backgroundColor: "#fb923c" }} />}
+                  <span className="text-sm font-medium text-white truncate">{ev.title}</span>
+                </div>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{ev.type}</span>
+                  {ev.game && <span className="text-xs" style={{ color: "var(--ash-text-dim)" }}>· {ev.game}</span>}
+                  <span className="text-xs font-mono-ash" style={{ color: "var(--ash-orange)" }}>{fd.time}</span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0 space-y-1">
+                <div className="text-xs font-mono-ash text-white">{ev.participants_count}/{ev.max_participants}</div>
+                {user && (
+                  <button
+                    onClick={e => { e.stopPropagation(); handleJoin(ev); }}
+                    disabled={joining === ev.id || (isFull && !ev.user_joined)}
+                    className="text-xs px-2 py-0.5 rounded transition-all"
+                    style={ev.user_joined
+                      ? { backgroundColor: "var(--ash-orange)", color: "#000" }
+                      : { border: "1px solid var(--ash-border)", color: "var(--ash-text-dim)", opacity: isFull ? 0.4 : 1 }}
+                    onMouseEnter={e => { if (!ev.user_joined && !isFull) { e.currentTarget.style.borderColor = "var(--ash-orange)"; e.currentTarget.style.color = "var(--ash-orange)"; }}}
+                    onMouseLeave={e => { if (!ev.user_joined) { e.currentTarget.style.borderColor = "var(--ash-border)"; e.currentTarget.style.color = "var(--ash-text-dim)"; }}}>
+                    {joining === ev.id ? "..." : ev.user_joined ? "✓ Иду" : isFull ? "Полный" : "Участвовать"}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -691,7 +801,7 @@ export default function Index() {
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showRegister, setShowRegister] = useState(false);
+  const [showSteamConnect, setShowSteamConnect] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showCreateClan, setShowCreateClan] = useState(false);
 
@@ -743,9 +853,17 @@ export default function Index() {
     );
   }
 
+  if (showSteamConnect) {
+    return (
+      <SteamConnect
+        onSuccess={u => { setUser(u); setShowSteamConnect(false); load(); }}
+        onBack={() => setShowSteamConnect(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: "var(--ash-surface)", color: "var(--ash-text)" }}>
-      {showRegister && <RegisterModal onDone={u => { setUser(u); setShowRegister(false); load(); }} />}
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
       {showCreateClan && (
         <CreateClanModal onClose={() => setShowCreateClan(false)} onCreated={() => { setShowCreateClan(false); load(); }} />
@@ -773,14 +891,19 @@ export default function Index() {
             )}
             {user ? (
               <div className="flex items-center gap-2 ml-1">
+                {user.steam_avatar && (
+                  <img src={user.steam_avatar} alt={user.steam_nick}
+                    className="w-7 h-7 rounded object-cover flex-shrink-0" />
+                )}
                 <div className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>
                   {user.steam_nick}
                 </div>
               </div>
             ) : (
-              <button onClick={() => setShowRegister(true)}
-                className="px-3 py-1.5 rounded text-xs font-display font-medium text-black"
+              <button onClick={() => setShowSteamConnect(true)}
+                className="px-3 py-1.5 rounded text-xs font-display font-medium text-black flex items-center gap-1.5"
                 style={{ backgroundColor: "var(--ash-orange)" }}>
+                <Icon name="Gamepad2" size={12} />
                 Подключить Steam
               </button>
             )}
@@ -816,9 +939,10 @@ export default function Index() {
         ) : !user && activeTab !== "calendar" && activeTab !== "feed" ? (
           <div className="text-center py-16 space-y-4">
             <div className="text-sm" style={{ color: "var(--ash-text-dim)" }}>Войдите чтобы получить доступ к этому разделу</div>
-            <button onClick={() => setShowRegister(true)}
-              className="px-5 py-2.5 rounded-md font-display font-medium text-black"
+            <button onClick={() => setShowSteamConnect(true)}
+              className="px-5 py-2.5 rounded-md font-display font-medium text-black flex items-center gap-2"
               style={{ backgroundColor: "var(--ash-orange)" }}>
+              <Icon name="Gamepad2" size={15} />
               Подключить Steam
             </button>
           </div>
@@ -826,7 +950,7 @@ export default function Index() {
           <>
             {activeTab === "feed" && <FeedSection clan={clan} activity={activity} />}
             {activeTab === "clan" && <ClanSection clan={clan} members={members} user={user} onInviteClick={() => setShowInvite(true)} />}
-            {activeTab === "calendar" && <CalendarSection />}
+            {activeTab === "calendar" && <CalendarSection user={user} />}
             {activeTab === "chat" && <ChatSection user={user} />}
             {activeTab === "ratings" && <RatingsSection members={members} />}
           </>
