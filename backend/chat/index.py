@@ -1,7 +1,7 @@
 """
 Чат клана.
 GET  /        — последние 50 сообщений клана
-POST /        — отправить сообщение
+POST /        — отправить сообщение (+ уведомление офлайн-участникам)
 """
 import json, os
 import psycopg2
@@ -31,13 +31,15 @@ def handler(event: dict, context) -> dict:
 
     if not token:
         cur.close(); conn.close()
-        return {"statusCode": 401, "headers": CORS, "body": json.dumps({"error": "Не авторизован"}, ensure_ascii=False)}
+        return {"statusCode": 401, "headers": CORS,
+                "body": json.dumps({"error": "Не авторизован"}, ensure_ascii=False)}
 
     cur.execute(f"SELECT * FROM {SCHEMA}.users WHERE session_token = %s", (token,))
     user = cur.fetchone()
     if not user or not user["clan_id"]:
         cur.close(); conn.close()
-        return {"statusCode": 403, "headers": CORS, "body": json.dumps({"error": "Нет доступа к чату"}, ensure_ascii=False)}
+        return {"statusCode": 403, "headers": CORS,
+                "body": json.dumps({"error": "Нет доступа к чату"}, ensure_ascii=False)}
 
     clan_id = user["clan_id"]
 
@@ -46,7 +48,8 @@ def handler(event: dict, context) -> dict:
         text = body.get("text", "").strip()
         if not text or len(text) > 2000:
             cur.close(); conn.close()
-            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Текст обязателен (макс 2000 символов)"}, ensure_ascii=False)}
+            return {"statusCode": 400, "headers": CORS,
+                    "body": json.dumps({"error": "Текст обязателен (макс 2000 символов)"}, ensure_ascii=False)}
         cur.execute(f"""
             INSERT INTO {SCHEMA}.messages (clan_id, user_id, text)
             VALUES (%s, %s, %s)
@@ -55,11 +58,22 @@ def handler(event: dict, context) -> dict:
         msg = dict(cur.fetchone())
         msg["user_nick"] = user["steam_nick"]
         msg["role"] = user["role"]
+
+        # Уведомление остальным участникам клана
+        preview = text[:80] + ("..." if len(text) > 80 else "")
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.notifications (user_id, type, title, body, link)
+            SELECT id, 'chat', %s, %s, 'chat'
+            FROM {SCHEMA}.users
+            WHERE clan_id = %s AND id != %s
+        """, (f"💬 {user['steam_nick']}", preview, clan_id, user["id"]))
+
         conn.commit()
         cur.close(); conn.close()
-        return {"statusCode": 200, "headers": CORS, "body": json.dumps(msg, default=str, ensure_ascii=False)}
+        return {"statusCode": 200, "headers": CORS,
+                "body": json.dumps(msg, default=str, ensure_ascii=False)}
 
-    # GET
+    # GET — последние 50 сообщений
     cur.execute(f"""
         SELECT m.id, m.text, m.created_at,
                u.steam_nick AS user_nick, u.steam_id, u.role, u.steam_avatar
@@ -71,4 +85,5 @@ def handler(event: dict, context) -> dict:
     """, (clan_id,))
     msgs = [dict(r) for r in cur.fetchall()]
     cur.close(); conn.close()
-    return {"statusCode": 200, "headers": CORS, "body": json.dumps(msgs, default=str, ensure_ascii=False)}
+    return {"statusCode": 200, "headers": CORS,
+            "body": json.dumps(msgs, default=str, ensure_ascii=False)}

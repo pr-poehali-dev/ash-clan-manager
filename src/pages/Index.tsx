@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import * as api from "@/lib/api";
 import type { User, Clan, Member, ActivityItem, ChatMessage, SearchUser, Invite, ClanEvent } from "@/lib/api";
 import SteamConnect from "./SteamConnect";
+import NotificationPanel from "@/components/NotificationPanel";
+import ToastNotifications from "@/components/ToastNotification";
+import { useRealtime } from "@/hooks/useRealtime";
 
 type Tab = "feed" | "clan" | "calendar" | "chat" | "ratings";
 
@@ -644,77 +647,138 @@ function CalendarSection({ user }: { user: User | null }) {
 
 // ─── Chat Section ─────────────────────────────────────────────────────────────
 
-function ChatSection({ user }: { user: User | null }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+function ChatSection({
+  user,
+  realtimeMessages,
+  onSend,
+}: {
+  user: User | null;
+  realtimeMessages: ChatMessage[];
+  onSend: (msg: ChatMessage) => void;
+}) {
+  const [base, setBase] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Начальная загрузка истории
   useEffect(() => {
-    getMessages();
-    const interval = setInterval(getMessages, 8000);
-    return () => clearInterval(interval);
+    api.getMessages().then(msgs => {
+      setBase(msgs);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
-  const getMessages = async () => {
-    const msgs = await api.getMessages().catch(() => []);
-    setMessages(msgs);
-    setLoading(false);
-  };
+  // Объединяем base + realtime, убирая дубли
+  const allMessages = (() => {
+    const ids = new Set(base.map(m => m.id));
+    const fresh = realtimeMessages.filter(m => !ids.has(m.id));
+    return [...base, ...fresh];
+  })();
+
+  // Автоскролл вниз при новых сообщениях
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [allMessages.length]);
 
   const send = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || sending) return;
     const text = input.trim();
     setInput("");
+    setSending(true);
     const msg = await api.sendMessage(text).catch(() => null);
-    if (msg) setMessages(prev => [...prev, msg]);
+    setSending(false);
+    if (msg) {
+      setBase(prev => [...prev, msg]);
+      onSend(msg);
+    }
   };
-
-  const onlineCount = 1;
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 200px)", minHeight: "500px" }}>
       <div className="flex items-center gap-3 mb-4 pb-4" style={{ borderBottom: "1px solid var(--ash-border)" }}>
         <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-orange" />
-        <span className="text-xs uppercase font-display tracking-wider" style={{ color: "var(--ash-text-dim)" }}>Общий чат клана</span>
-        <span className="text-xs font-mono-ash ml-auto" style={{ color: "var(--ash-text-dim)" }}>{onlineCount} онлайн</span>
+        <span className="text-xs uppercase font-display tracking-wider" style={{ color: "var(--ash-text-dim)" }}>
+          Общий чат клана
+        </span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--ash-orange)" }} />
+          <span className="text-xs font-mono-ash" style={{ color: "var(--ash-text-dim)" }}>live</span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-        {loading && <div className="text-center py-8 text-sm" style={{ color: "var(--ash-text-dim)" }}>Загрузка...</div>}
-        {!loading && messages.length === 0 && (
-          <div className="text-center py-8 text-sm" style={{ color: "var(--ash-text-dim)" }}>Начните общение с кланом!</div>
+        {loading && (
+          <div className="text-center py-8 text-sm" style={{ color: "var(--ash-text-dim)" }}>Загрузка...</div>
         )}
-        {messages.map((msg, i) => (
-          <div key={msg.id} className="flex items-start gap-3 animate-fade-in" style={{ animationDelay: `${i * 0.03}s`, opacity: 0 }}>
-            <MemberAvatar initials={msg.user_nick.slice(0, 2).toUpperCase()} size="sm" />
+        {!loading && allMessages.length === 0 && (
+          <div className="text-center py-8 text-sm" style={{ color: "var(--ash-text-dim)" }}>
+            Начните общение с кланом!
+          </div>
+        )}
+        {allMessages.map((msg, i) => (
+          <div
+            key={msg.id}
+            className="flex items-start gap-3 animate-fade-in"
+            style={{ animationDelay: `${Math.min(i, 10) * 0.03}s`, opacity: 0 }}
+          >
+            {msg.steam_avatar ? (
+              <img
+                src={msg.steam_avatar}
+                alt={msg.user_nick}
+                className="w-7 h-7 rounded-md flex-shrink-0 object-cover"
+              />
+            ) : (
+              <MemberAvatar initials={msg.user_nick.slice(0, 2).toUpperCase()} size="sm" />
+            )}
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className={`text-sm font-medium ${msg.user_nick === user?.steam_nick ? "text-orange-400" : "text-white"}`}>{msg.user_nick}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>{msg.role}</span>
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: msg.user_nick === user?.steam_nick ? "var(--ash-orange)" : "white" }}
+                >
+                  {msg.user_nick}
+                </span>
+                <span
+                  className="text-xs px-1.5 py-0.5 rounded"
+                  style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}
+                >
+                  {msg.role}
+                </span>
                 <span className="text-xs font-mono-ash ml-auto" style={{ color: "var(--ash-text-dim)" }}>
                   {new Date(msg.created_at).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
-              <div className="text-sm leading-relaxed" style={{ color: "var(--ash-text)" }}>{msg.text}</div>
+              <div className="text-sm leading-relaxed" style={{ color: "var(--ash-text)" }}>
+                {msg.text}
+              </div>
             </div>
           </div>
         ))}
+        <div ref={bottomRef} />
       </div>
 
       <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--ash-border)" }}>
         <div className="flex gap-2">
-          <input value={input} onChange={e => setInput(e.target.value)}
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && send()}
             placeholder={user ? "Написать в чат..." : "Войдите чтобы писать в чат"}
-            disabled={!user}
+            disabled={!user || sending}
             className="flex-1 px-3 py-2.5 text-sm text-white rounded-md focus:outline-none transition-colors"
             style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
             onFocus={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
-            onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")} />
-          <button onClick={send} disabled={!user}
-            className="px-4 py-2.5 rounded-md text-black transition-colors"
-            style={{ backgroundColor: "var(--ash-orange)", opacity: user ? 1 : 0.4 }}>
-            <Icon name="Send" size={15} />
+            onBlur={e => (e.currentTarget.style.borderColor = "var(--ash-border)")}
+          />
+          <button
+            onClick={send}
+            disabled={!user || sending || !input.trim()}
+            className="px-4 py-2.5 rounded-md text-black transition-all"
+            style={{ backgroundColor: "var(--ash-orange)", opacity: user && !sending && input.trim() ? 1 : 0.4 }}
+          >
+            <Icon name={sending ? "RefreshCw" : "Send"} size={15} />
           </button>
         </div>
       </div>
@@ -804,6 +868,11 @@ export default function Index() {
   const [showSteamConnect, setShowSteamConnect] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showCreateClan, setShowCreateClan] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = useRef<HTMLDivElement>(null);
+
+  // Realtime: уведомления + новые сообщения чата
+  const [realtimeState, realtimeControls] = useRealtime(!!user && !loading);
 
   const load = useCallback(async () => {
     const me = await api.getMe();
@@ -869,6 +938,15 @@ export default function Index() {
         <CreateClanModal onClose={() => setShowCreateClan(false)} onCreated={() => { setShowCreateClan(false); load(); }} />
       )}
 
+      {/* Всплывающие уведомления */}
+      <ToastNotifications
+        notifications={realtimeState.notifications}
+        onNavigate={link => {
+          const tabMap: Record<string, Tab> = { chat: "chat", calendar: "calendar", clan: "clan" };
+          if (tabMap[link]) setActiveTab(tabMap[link] as Tab);
+        }}
+      />
+
       {/* Header */}
       <header className="sticky top-0 z-50" style={{ backgroundColor: "var(--ash-surface)", borderBottom: "1px solid var(--ash-border)" }}>
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-4">
@@ -891,11 +969,54 @@ export default function Index() {
             )}
             {user ? (
               <div className="flex items-center gap-2 ml-1">
+                {/* Колокольчик уведомлений */}
+                <div ref={bellRef} className="relative">
+                  <button
+                    onClick={() => {
+                      setShowNotifications(p => !p);
+                      if (!showNotifications && realtimeState.unreadCount > 0) {
+                        realtimeControls.markRead();
+                      }
+                    }}
+                    className="w-8 h-8 rounded flex items-center justify-center transition-colors relative"
+                    style={{ backgroundColor: "var(--ash-surface-3)", border: "1px solid var(--ash-border)" }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ash-orange)")}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--ash-border)")}
+                  >
+                    <Icon
+                      name="Bell"
+                      size={14}
+                      style={{ color: realtimeState.unreadCount > 0 ? "var(--ash-orange)" : "var(--ash-text-dim)" }}
+                    />
+                    {realtimeState.unreadCount > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-display font-bold animate-fade-in"
+                        style={{ backgroundColor: "var(--ash-orange)", color: "#000" }}
+                      >
+                        {realtimeState.unreadCount > 9 ? "9+" : realtimeState.unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  {showNotifications && (
+                    <NotificationPanel
+                      notifications={realtimeState.notifications}
+                      unreadCount={realtimeState.unreadCount}
+                      onMarkRead={realtimeControls.markRead}
+                      onNavigate={link => {
+                        const tabMap: Record<string, Tab> = {
+                          chat: "chat", calendar: "calendar", clan: "clan",
+                        };
+                        if (tabMap[link]) setActiveTab(tabMap[link] as Tab);
+                      }}
+                      onClose={() => setShowNotifications(false)}
+                    />
+                  )}
+                </div>
                 {user.steam_avatar && (
                   <img src={user.steam_avatar} alt={user.steam_nick}
                     className="w-7 h-7 rounded object-cover flex-shrink-0" />
                 )}
-                <div className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>
+                <div className="text-xs px-2 py-1 rounded hidden sm:block" style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>
                   {user.steam_nick}
                 </div>
               </div>
@@ -951,7 +1072,13 @@ export default function Index() {
             {activeTab === "feed" && <FeedSection clan={clan} activity={activity} />}
             {activeTab === "clan" && <ClanSection clan={clan} members={members} user={user} onInviteClick={() => setShowInvite(true)} />}
             {activeTab === "calendar" && <CalendarSection user={user} />}
-            {activeTab === "chat" && <ChatSection user={user} />}
+            {activeTab === "chat" && (
+              <ChatSection
+                user={user}
+                realtimeMessages={realtimeState.newMessages}
+                onSend={realtimeControls.addOptimisticMessage}
+              />
+            )}
             {activeTab === "ratings" && <RatingsSection members={members} />}
           </>
         )}

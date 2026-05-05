@@ -1,4 +1,6 @@
 {
+  "notifications": "https://functions.poehali.dev/e2fb0aba-dda7-4d5d-a33d-0e11612feb04",
+  "events": "https://functions.poehali.dev/28cb6ff3-5ac4-42c8-9b70-ee3ec0ed1e66",
   "auth": "https://functions.poehali.dev/e329aae7-e93b-4b16-8b31-c4ee65a04bde",
   "invites": "https://functions.poehali.dev/6557e11c-7bbf-429e-94c2-33182e7c6983",
   "clan": "https://functions.poehali.dev/b14c514c-f34c-45ea-81f7-1e705ad16ae2",

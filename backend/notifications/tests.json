@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "name": "GET notifications without token returns 401",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401
+    },
+    {
+      "name": "POST read without token returns 401",
+      "method": "POST",
+      "path": "/",
+      "expectedStatus": 401
+    }
+  ]
+}

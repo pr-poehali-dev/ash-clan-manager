@@ -3,6 +3,8 @@ const URLS = {
   clan: "https://functions.poehali.dev/b14c514c-f34c-45ea-81f7-1e705ad16ae2",
   chat: "https://functions.poehali.dev/2aa2d173-4cd7-4a2a-9993-4ad8c53fde8b",
   invites: "https://functions.poehali.dev/6557e11c-7bbf-429e-94c2-33182e7c6983",
+  events: "https://functions.poehali.dev/28cb6ff3-5ac4-42c8-9b70-ee3ec0ed1e66",
+  notifications: "https://functions.poehali.dev/e2fb0aba-dda7-4d5d-a33d-0e11612feb04",
 };
 
 export function getToken(): string {
@@ -207,27 +209,62 @@ export interface CreateEventPayload {
 }
 
 export async function getEvents(): Promise<ClanEvent[]> {
-  return req<ClanEvent[]>("clan", "/events");
+  return req<ClanEvent[]>("events", "/");
 }
 
 export async function createEvent(payload: CreateEventPayload): Promise<ClanEvent> {
-  return req<ClanEvent>("clan", "/events", {
+  return req<ClanEvent>("events", "/", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function joinEvent(event_id: number): Promise<void> {
-  await req("clan", "/events/join", {
+  await req("events", "/join", {
     method: "POST",
     body: JSON.stringify({ event_id }),
   });
 }
 
 export async function leaveEvent(event_id: number): Promise<void> {
-  await req("clan", "/events/leave", {
+  await req("events", "/leave", {
     method: "POST",
     body: JSON.stringify({ event_id }),
+  });
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface PollResult {
+  notifications: Notification[];
+  messages: ChatMessage[];
+  unread_count: number;
+}
+
+// ChatMessage is defined in the Chat section below — TypeScript hoists interfaces
+
+export async function getNotifications(): Promise<{ notifications: Notification[]; unread_count: number }> {
+  return req("notifications", "/");
+}
+
+export async function pollUpdates(sinceNotif: number, sinceMsg: number): Promise<PollResult> {
+  return req("notifications", `/poll?since_notif=${sinceNotif}&since_msg=${sinceMsg}`);
+}
+
+export async function markNotificationsRead(ids?: number[]): Promise<void> {
+  await req("notifications", "/read", {
+    method: "POST",
+    body: JSON.stringify(ids ? { ids } : {}),
   });
 }
 
