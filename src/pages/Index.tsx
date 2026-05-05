@@ -4,6 +4,7 @@ import * as api from "@/lib/api";
 import type { User, Clan, Member, ActivityItem, ChatMessage, SearchUser, Invite, ClanEvent } from "@/lib/api";
 import SteamConnect from "./SteamConnect";
 import ClanSettings from "./ClanSettings";
+import PlayerProfile from "./PlayerProfile";
 import NotificationPanel from "@/components/NotificationPanel";
 import ToastNotifications from "@/components/ToastNotification";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -104,13 +105,18 @@ function InviteModal({ onClose }: { onClose: () => void }) {
                   {u.rank || "Без ранга"} · {u.clan_id ? "В клане" : "Без клана"}
                 </div>
               </div>
-              <button onClick={() => invite(u.id)} disabled={sent.includes(u.id) || !!u.clan_id}
-                className="px-3 py-1 rounded text-xs font-display transition-all"
-                style={{
-                  backgroundColor: sent.includes(u.id) ? "var(--ash-surface-3)" : "var(--ash-orange)",
-                  color: sent.includes(u.id) ? "var(--ash-text-dim)" : "#000",
+              <button
+                onClick={() => invite(u.id)}
+                disabled={sent.includes(u.id) || !!u.clan_id}
+                className={`px-3 py-1 text-xs transition-all ${sent.includes(u.id) ? "rounded" : "btn-lava"}`}
+                style={sent.includes(u.id) ? {
+                  backgroundColor: "var(--metal-mid)",
+                  color: "var(--metal-dim)",
+                  border: "1px solid var(--metal-edge)",
+                  borderRadius: "2px",
                   opacity: u.clan_id ? 0.4 : 1,
-                }}>
+                } : { opacity: u.clan_id ? 0.4 : 1 }}
+              >
                 {sent.includes(u.id) ? "Отправлено" : u.clan_id ? "В клане" : "Пригласить"}
               </button>
             </div>
@@ -174,8 +180,8 @@ function CreateClanModal({ onClose, onCreated }: { onClose: () => void; onCreate
           </div>
           {error && <div className="text-xs text-red-400">{error}</div>}
           <button onClick={handleCreate} disabled={loading}
-            className="w-full py-2.5 rounded-md font-display font-medium text-black"
-            style={{ backgroundColor: "var(--ash-orange)", opacity: loading ? 0.6 : 1 }}>
+            className="w-full py-2.5 btn-lava"
+            style={{ opacity: loading ? 0.6 : 1 }}>
             {loading ? "Создание..." : "Создать клан"}
           </button>
         </div>
@@ -200,8 +206,7 @@ function NoClanScreen({ user, invites, onCreateClan, onAccept, onDecline, refres
 
       <div className="flex justify-center">
         <button onClick={onCreateClan}
-          className="flex items-center gap-2 px-6 py-3 rounded-md font-display font-medium text-black transition-opacity"
-          style={{ backgroundColor: "var(--ash-orange)" }}>
+          className="btn-lava flex items-center gap-2 px-6 py-3">
           <Icon name="Plus" size={15} />
           Создать клан
         </button>
@@ -221,8 +226,7 @@ function NoClanScreen({ user, invites, onCreateClan, onAccept, onDecline, refres
                   <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>от {inv.from_nick} · {timeAgo(inv.created_at)}</div>
                 </div>
                 <button onClick={() => onAccept(inv.id)}
-                  className="px-3 py-1 rounded text-xs font-display text-black"
-                  style={{ backgroundColor: "var(--ash-orange)" }}>
+                  className="btn-lava px-3 py-1 text-xs">
                   Принять
                 </button>
                 <button onClick={() => onDecline(inv.id)}
@@ -302,9 +306,9 @@ function FeedSection({ clan, activity }: { clan: Clan | null; activity: Activity
 
 // ─── Clan Section ─────────────────────────────────────────────────────────────
 
-function ClanSection({ clan, members, user, onInviteClick, onSettingsClick }: {
+function ClanSection({ clan, members, user, onInviteClick, onSettingsClick, onPlayerClick }: {
   clan: Clan | null; members: Member[]; user: User | null;
-  onInviteClick: () => void; onSettingsClick: () => void;
+  onInviteClick: () => void; onSettingsClick: () => void; onPlayerClick: (m: Member) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"info" | "members">("info");
 
@@ -476,7 +480,8 @@ function ClanSection({ clan, members, user, onInviteClick, onSettingsClick }: {
           {members.map((m) => (
             <div key={m.id} className="flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all"
               style={{ border: "1px solid transparent" }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--ash-surface-3)"; e.currentTarget.style.borderColor = "var(--ash-border)"; }}
+              onClick={() => onPlayerClick(m)}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--metal-mid)"; e.currentTarget.style.borderColor = "var(--metal-crack)"; }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = ""; e.currentTarget.style.borderColor = "transparent"; }}>
               <div className="relative">
                 {m.steam_avatar ? (
@@ -499,6 +504,7 @@ function ClanSection({ clan, members, user, onInviteClick, onSettingsClick }: {
                 <div className="font-mono-ash text-sm text-white">KDA {m.kda}</div>
                 <div className="text-xs" style={{ color: "var(--ash-text-dim)" }}>{m.wins} побед</div>
               </div>
+              <Icon name="ChevronRight" size={13} style={{ color: "var(--metal-faint)", flexShrink: 0 }} />
             </div>
           ))}
         </div>
@@ -595,8 +601,8 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
           </div>
           {error && <div className="text-xs text-red-400">{error}</div>}
           <button onClick={handle} disabled={loading}
-            className="w-full py-2.5 rounded-md font-display font-medium text-black"
-            style={{ backgroundColor: "var(--ash-orange)", opacity: loading ? 0.6 : 1 }}>
+            className="w-full py-2.5 btn-lava"
+            style={{ opacity: loading ? 0.6 : 1 }}>
             {loading ? "Создание..." : "Создать событие"}
           </button>
         </div>
@@ -663,8 +669,7 @@ function CalendarSection({ user }: { user: User | null }) {
         </div>
         {canManage && (
           <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-display font-medium text-black"
-            style={{ backgroundColor: "var(--ash-orange)" }}>
+            className="btn-lava flex items-center gap-2 px-3 py-1.5 text-sm">
             <Icon name="Plus" size={13} />
             Событие
           </button>
@@ -958,6 +963,7 @@ export default function Index() {
   const [showInvite, setShowInvite] = useState(false);
   const [showCreateClan, setShowCreateClan] = useState(false);
   const [showClanSettings, setShowClanSettings] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Member | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
 
@@ -1034,6 +1040,17 @@ export default function Index() {
     );
   }
 
+  if (selectedPlayer) {
+    return (
+      <PlayerProfile
+        member={selectedPlayer}
+        currentUser={user}
+        clan={clan}
+        onBack={() => setSelectedPlayer(null)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: "var(--ash-surface)", color: "var(--ash-text)" }}>
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
@@ -1051,14 +1068,29 @@ export default function Index() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50" style={{ backgroundColor: "var(--ash-surface)", borderBottom: "1px solid var(--ash-border)" }}>
+      <header className="sticky top-0 z-50" style={{
+        backgroundColor: "var(--metal-deep)",
+        borderBottom: "1px solid var(--metal-edge)",
+        boxShadow: "0 1px 0 rgba(255,85,0,0.08), 0 4px 20px rgba(0,0,0,0.6)",
+      }}>
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: "var(--ash-orange)" }}>
-              <span className="font-display font-black text-xs text-black tracking-wider">A</span>
+            {/* Логотип — раскалённый металл */}
+            <div
+              className="logo-ash w-8 h-8 rounded-sm flex items-center justify-center relative overflow-hidden"
+            >
+              <span
+                className="font-display font-black text-sm relative z-10 lava-text-glow"
+                style={{ color: "var(--lava-bright)", letterSpacing: "0.05em" }}
+              >A</span>
             </div>
-            <span className="font-display font-bold text-sm tracking-widest text-white">ASH</span>
-            {clan && <span className="text-xs font-mono-ash ml-1" style={{ color: "var(--ash-text-dim)" }}>{clan.tag}</span>}
+            <div>
+              <span
+                className="font-display font-black text-sm tracking-widest"
+                style={{ color: "#E8D5C0", letterSpacing: "0.2em" }}
+              >ASH</span>
+            </div>
+            {clan && <span className="text-xs font-mono-ash ml-1" style={{ color: "var(--metal-dim)" }}>{clan.tag}</span>}
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
@@ -1119,14 +1151,16 @@ export default function Index() {
                   <img src={user.steam_avatar} alt={user.steam_nick}
                     className="w-7 h-7 rounded object-cover flex-shrink-0" />
                 )}
-                <div className="text-xs px-2 py-1 rounded hidden sm:block" style={{ backgroundColor: "var(--ash-surface-3)", color: "var(--ash-text-dim)" }}>
+                <div className="text-xs px-2 py-1 rounded hidden sm:block"
+                  style={{ backgroundColor: "var(--metal-raised)", color: "var(--metal-dim)", border: "1px solid var(--metal-edge)" }}>
                   {user.steam_nick}
                 </div>
               </div>
             ) : (
-              <button onClick={() => setShowSteamConnect(true)}
-                className="px-3 py-1.5 rounded text-xs font-display font-medium text-black flex items-center gap-1.5"
-                style={{ backgroundColor: "var(--ash-orange)" }}>
+              <button
+                onClick={() => setShowSteamConnect(true)}
+                className="btn-lava px-3 py-1.5 text-xs flex items-center gap-1.5"
+              >
                 <Icon name="Gamepad2" size={12} />
                 Подключить Steam
               </button>
@@ -1136,17 +1170,24 @@ export default function Index() {
       </header>
 
       {/* Nav */}
-      <nav className="sticky top-14 z-40 overflow-x-auto"
-        style={{ backgroundColor: "var(--ash-surface-2)", borderBottom: "1px solid var(--ash-border)" }}>
-        <div className="max-w-3xl mx-auto px-4 flex gap-1">
+      <nav className="sticky top-14 z-40 overflow-x-auto" style={{
+        backgroundColor: "var(--metal-dark)",
+        borderBottom: "1px solid var(--metal-edge)",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.5)",
+      }}>
+        <div className="max-w-3xl mx-auto px-4 flex gap-0">
           {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-2 px-4 py-3 text-xs font-display uppercase tracking-wider transition-all whitespace-nowrap"
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex items-center gap-2 px-4 py-3 text-xs font-display uppercase tracking-wider transition-all whitespace-nowrap relative"
               style={{
-                borderBottom: `2px solid ${activeTab === tab.id ? "var(--ash-orange)" : "transparent"}`,
-                color: activeTab === tab.id ? "var(--ash-orange)" : "var(--ash-text-dim)",
+                color: activeTab === tab.id ? "var(--lava-bright)" : "var(--metal-dim)",
+                borderBottom: `2px solid ${activeTab === tab.id ? "var(--lava-bright)" : "transparent"}`,
                 marginBottom: "-1px",
-              }}>
+                textShadow: activeTab === tab.id ? "0 0 10px rgba(255,122,26,0.6)" : "none",
+              }}
+            >
               <Icon name={tab.icon} size={13} />
               {tab.label}
             </button>
@@ -1164,8 +1205,7 @@ export default function Index() {
           <div className="text-center py-16 space-y-4">
             <div className="text-sm" style={{ color: "var(--ash-text-dim)" }}>Войдите чтобы получить доступ к этому разделу</div>
             <button onClick={() => setShowSteamConnect(true)}
-              className="px-5 py-2.5 rounded-md font-display font-medium text-black flex items-center gap-2"
-              style={{ backgroundColor: "var(--ash-orange)" }}>
+              className="btn-lava px-5 py-2.5 flex items-center gap-2 mx-auto">
               <Icon name="Gamepad2" size={15} />
               Подключить Steam
             </button>
@@ -1173,7 +1213,7 @@ export default function Index() {
         ) : (
           <>
             {activeTab === "feed" && <FeedSection clan={clan} activity={activity} />}
-            {activeTab === "clan" && <ClanSection clan={clan} members={members} user={user} onInviteClick={() => setShowInvite(true)} onSettingsClick={() => setShowClanSettings(true)} />}
+            {activeTab === "clan" && <ClanSection clan={clan} members={members} user={user} onInviteClick={() => setShowInvite(true)} onSettingsClick={() => setShowClanSettings(true)} onPlayerClick={setSelectedPlayer} />}
             {activeTab === "calendar" && <CalendarSection user={user} />}
             {activeTab === "chat" && (
               <ChatSection

@@ -146,8 +146,7 @@ export default function SteamConnect({ onSuccess, onBack }: Props) {
               {/* Buttons */}
               <div className="space-y-3">
                 <button onClick={() => setMode("qr")}
-                  className="w-full py-3.5 rounded-lg font-display font-semibold text-black flex items-center justify-center gap-3 transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: "var(--ash-orange)" }}>
+                  className="btn-lava w-full py-3.5 flex items-center justify-center gap-3">
                   <Icon name="QrCode" size={18} />
                   QR-код (мобильный)
                 </button>
@@ -278,8 +277,8 @@ export default function SteamConnect({ onSuccess, onBack }: Props) {
               {error && <div className="text-xs text-red-400">{error}</div>}
 
               <button onClick={handleManualAuth} disabled={loading || !manualId.trim()}
-                className="w-full py-3.5 rounded-lg font-display font-semibold text-black flex items-center justify-center gap-2 transition-opacity"
-                style={{ backgroundColor: "var(--ash-orange)", opacity: loading || !manualId.trim() ? 0.5 : 1 }}>
+                className="btn-lava w-full py-3.5 flex items-center justify-center gap-2"
+                style={{ opacity: loading || !manualId.trim() ? 0.5 : 1 }}>
                 {loading ? <><Icon name="RefreshCw" size={15} />Авторизация...</> : <><Icon name="LogIn" size={15} />Войти в ASH</>}
               </button>
 

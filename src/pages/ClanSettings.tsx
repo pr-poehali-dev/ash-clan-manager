@@ -12,7 +12,7 @@ interface Props {
   onMembersChanged: () => void;
 }
 
-const DISCIPLINES = ["CS2", "Dota 2", "Valorant", "League of Legends", "Apex Legends",
+const DISCIPLINES = ["Rust", "CS2", "Dota 2", "Valorant", "League of Legends", "Apex Legends",
   "Fortnite", "PUBG", "Overwatch 2", "Rainbow Six Siege", "Warzone", "Мультиигровой"];
 const REGIONS = ["Россия", "СНГ", "Европа", "Азия", "Северная Америка", "Весь мир"];
 const ACCENT_COLORS = ["#FF6B1A", "#3B82F6", "#10B981", "#8B5CF6", "#EC4899", "#F59E0B", "#EF4444", "#06B6D4"];
@@ -209,8 +209,8 @@ export default function ClanSettings({ clan, members, user, onBack, onUpdated, o
           <button
             onClick={saveProfile}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-1.5 rounded font-display text-xs font-medium text-black transition-opacity"
-            style={{ backgroundColor: saveSuccess ? "#10B981" : "var(--ash-orange)", opacity: saving ? 0.6 : 1 }}
+            className="btn-lava flex items-center gap-2 px-4 py-1.5 text-xs"
+            style={{ opacity: saving ? 0.6 : 1, backgroundColor: saveSuccess ? "#10B981" : undefined }}
           >
             <Icon name={saveSuccess ? "Check" : saving ? "RefreshCw" : "Save"} size={13} />
             {saveSuccess ? "Сохранено!" : saving ? "Сохранение..." : "Сохранить"}
@@ -396,8 +396,8 @@ export default function ClanSettings({ clan, members, user, onBack, onUpdated, o
                       <button
                         onClick={saveEmblem}
                         disabled={uploadingEmblem}
-                        className="flex items-center gap-2 px-4 py-2 rounded font-display text-xs font-medium text-black"
-                        style={{ backgroundColor: "var(--ash-orange)", opacity: uploadingEmblem ? 0.6 : 1 }}
+                        className="btn-lava flex items-center gap-2 px-4 py-2 text-xs"
+                        style={{ opacity: uploadingEmblem ? 0.6 : 1 }}
                       >
                         <Icon name={uploadingEmblem ? "RefreshCw" : "Upload"} size={13} />
                         {uploadingEmblem ? "Загрузка..." : "Загрузить эмблему"}
